@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["chromium", "chromedriver"]
+
+[phases.install]
+cmds = ["pip install --no-cache-dir -r requirements.txt"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "python webapp.py"
