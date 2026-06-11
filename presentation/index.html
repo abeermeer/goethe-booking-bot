@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goethe Booking Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:#08080f;color:#c8c8e0;overflow-x:hidden;line-height:1.6}
+
+/* ── Stars Canvas ── */
+#stars-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* ── Custom Cursor ── */
+.cursor{position:fixed;width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);border-radius:50%;pointer-events:none;z-index:9999;transition:transform 0.15s,background 0.3s;transform:translate(-50%,-50%)}
+.cursor.hover{width:60px;height:60px;background:rgba(120,90,255,0.08);border-color:rgba(120,90,255,0.6)}
+.cursor-follower{position:fixed;width:6px;height:6px;background:#785aff;border-radius:50%;pointer-events:none;z-index:9999;transition:transform 0.05s;transform:translate(-50%,-50%)}
+
+/* ── Navbar ── */
+nav{position:fixed;top:0;left:0;width:100%;z-index:100;padding:20px 50px;display:flex;justify-content:space-between;align-items:center;transition:all 0.4s;background:transparent}
+nav.scrolled{background:rgba(8,8,15,0.85);backdrop-filter:blur(20px);padding:14px 50px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.nav-logo{font-size:22px;font-weight:800;background:linear-gradient(135deg,#785aff,#ff6ec7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px}
+.nav-links{display:flex;gap:32px;align-items:center;list-style:none}
+.nav-links a{color:rgba(255,255,255,0.6);text-decoration:none;font-size:14px;font-weight:500;transition:color 0.3s;letter-spacing:0.3px}
+.nav-links a:hover{color:#fff}
+.nav-cta{padding:10px 24px;background:linear-gradient(135deg,#785aff,#5a3dcc);border:none;border-radius:50px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:transform 0.3s,box-shadow 0.3s;letter-spacing:0.3px}
+.nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(120,90,255,0.35)}
+
+/* ── Hero ── */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 20px}
+.hero-content{max-width:900px;position:relative}
+.hero-badge{display:inline-block;padding:8px 20px;border:1px solid rgba(120,90,255,0.3);border-radius:50px;font-size:12px;font-weight:600;color:#785aff;background:rgba(120,90,255,0.08);letter-spacing:1px;text-transform:uppercase;margin-bottom:24px}
+.hero h1{font-size:clamp(44px,8vw,96px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:24px;background:linear-gradient(135deg,#fff 30%,#785aff 70%,#ff6ec7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:clamp(16px,2vw,22px);color:rgba(255,255,255,0.5);max-width:640px;margin:0 auto 40px;line-height:1.7;font-weight:400}
+.hero-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.btn-primary{padding:16px 40px;background:linear-gradient(135deg,#785aff,#5a3dcc);border:none;border-radius:60px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.4s;text-decoration:none;letter-spacing:0.3px}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(120,90,255,0.4)}
+.btn-secondary{padding:16px 40px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:60px;color:#fff;font-size:16px;font-weight:500;cursor:pointer;transition:all 0.4s;text-decoration:none;letter-spacing:0.3px}
+.btn-secondary:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.2);transform:translateY(-3px)}
+.scroll-indicator{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,0.2);font-size:11px;letter-spacing:2px;text-transform:uppercase;animation:bounce 2s infinite}
+.scroll-indicator .line{width:1px;height:40px;background:linear-gradient(to bottom,rgba(255,255,255,0.3),transparent)}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ── Bottom Bar ── */
+.bottom-bar{position:fixed;bottom:0;left:0;width:100%;z-index:100;padding:12px 20px;background:rgba(8,8,15,0.9);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,0.06);display:none}
+.bottom-bar a{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;background:linear-gradient(135deg,#785aff,#5a3dcc);border-radius:12px;color:#fff;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.3px}
+.bottom-bar a:hover{background:linear-gradient(135deg,#8a6aff,#6a4ddd)}
+
+/* ── Sections ── */
+section{position:relative;z-index:1;padding:120px 30px}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-label{display:inline-block;font-size:12px;font-weight:600;color:#785aff;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+.section-title{font-size:clamp(32px,5vw,56px);font-weight:800;color:#fff;letter-spacing:-1px;margin-bottom:20px}
+.section-sub{font-size:18px;color:rgba(255,255,255,0.4);max-width:600px;line-height:1.7}
+
+/* ── Features Grid ── */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;margin-top:60px}
+.feature-card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:20px;padding:40px 32px;transition:all 0.4s;position:relative;overflow:hidden}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#785aff,transparent);opacity:0;transition:opacity 0.4s}
+.feature-card:hover{background:rgba(255,255,255,0.04);border-color:rgba(120,90,255,0.2);transform:translateY(-4px)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:48px;height:48px;border-radius:14px;background:rgba(120,90,255,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px}
+.feature-card h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:10px}
+.feature-card p{font-size:14px;color:rgba(255,255,255,0.4);line-height:1.7}
+
+/* ── Stats ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;margin-top:60px}
+.stat-card{text-align:center;padding:40px 20px;background:rgba(255,255,255,0.02);border-radius:20px;border:1px solid rgba(255,255,255,0.05)}
+.stat-number{font-size:52px;font-weight:900;background:linear-gradient(135deg,#fff,#785aff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.stat-label{font-size:14px;color:rgba(255,255,255,0.4);margin-top:10px;font-weight:500}
+
+/* ── Flow Diagram ── */
+.flow-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:32px;margin-top:60px;position:relative}
+.flow-step{position:relative;text-align:center;padding:40px 20px}
+.flow-step-num{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#785aff,#5a3dcc);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;margin:0 auto 20px;position:relative}
+.flow-step-num::after{content:'';position:absolute;width:100%;height:100%;border-radius:16px;background:linear-gradient(135deg,#785aff,transparent);opacity:0.3;filter:blur(12px);z-index:-1}
+.flow-step h4{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+.flow-step p{font-size:13px;color:rgba(255,255,255,0.4);line-height:1.6}
+
+/* ── Students Showcase ── */
+.student-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:60px}
+.student-card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:20px;padding:36px;transition:all 0.4s}
+.student-card:hover{border-color:rgba(120,90,255,0.2);transform:translateY(-4px);background:rgba(255,255,255,0.04)}
+.student-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+.student-exam{display:inline-block;padding:4px 14px;border-radius:50px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:8px 0 16px}
+.student-exam.a1{background:rgba(120,90,255,0.15);color:#785aff}
+.student-exam.a2{background:rgba(0,200,150,0.15);color:#00c896}
+.student-exam.b1{background:rgba(255,110,199,0.15);color:#ff6ec7}
+.student-detail{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:4px;display:flex;gap:8px}
+.student-detail strong{color:rgba(255,255,255,0.7);font-weight:500;min-width:70px}
+
+/* ── Timeline ── */
+.timeline{position:relative;margin-top:60px;padding-left:40px}
+.timeline::before{content:'';position:absolute;left:14px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,rgba(120,90,255,0.6),rgba(255,110,199,0.3),transparent)}
+.tl-item{position:relative;padding:0 0 40px 40px;border-left:2px solid rgba(120,90,255,0.15);margin-left:14px;padding-left:36px}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:'';position:absolute;left:-9px;top:4px;width:16px;height:16px;border-radius:50%;background:#785aff;border:3px solid #08080f;box-shadow:0 0 0 2px rgba(120,90,255,0.3)}
+.tl-date{font-size:12px;font-weight:600;color:#785aff;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.tl-title{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px}
+.tl-desc{font-size:14px;color:rgba(255,255,255,0.4);line-height:1.6}
+
+/* ── Tech Stack ── */
+.tech-grid{display:flex;flex-wrap:wrap;gap:16px;margin-top:40px;justify-content:center}
+.tech-tag{padding:10px 24px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:50px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.5);transition:all 0.3s}
+.tech-tag:hover{background:rgba(120,90,255,0.1);border-color:rgba(120,90,255,0.3);color:#fff}
+
+/* ── Footer ── */
+footer{position:relative;z-index:1;padding:60px 30px;text-align:center;border-top:1px solid rgba(255,255,255,0.04)}
+footer p{font-size:13px;color:rgba(255,255,255,0.25)}
+
+/* ── Utility ── */
+.gradient-text{background:linear-gradient(135deg,#fff,#785aff,#ff6ec7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ── Reveal Animation ── */
+.reveal{opacity:0;transform:translateY(40px);transition:all 0.8s cubic-bezier(0.16,1,0.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  nav{padding:16px 20px}
+  nav.scrolled{padding:12px 20px}
+  .nav-links{display:none}
+  .bottom-bar{display:block}
+  section{padding:80px 20px}
+  .hero h1{font-size:38px}
+  .hero p{font-size:16px}
+  .features-grid,.student-cards{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .flow-steps{grid-template-columns:1fr 1fr}
+  .cursor,.cursor-follower{display:none}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr}
+  .flow-steps{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<canvas id="stars-canvas"></canvas>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-follower" id="cursor-follower"></div>
+<div class="bottom-bar"><a href="https://aesthetic-alpaca-769b17.netlify.app" target="_blank"><span style="width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite;display:inline-block"></span>Open Dashboard →</a></div>
+
+<nav id="navbar">
+  <div class="nav-logo">✦ Goethe Bot</div>
+  <div class="nav-links">
+    <a href="https://aesthetic-alpaca-769b17.netlify.app" class="nav-cta" target="_blank"><span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-right:8px;animation:pulse 2s infinite"></span>Dashboard →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">⚡ Automated Booking System</div>
+    <h1>Goethe Exam<br>Slot Booking Bot</h1>
+    <p>Three students, three exams, one seamless booking pipeline. Real-time automation for Goethe-Institut Pakistan exam slots — A1, A2, and B1 in parallel.</p>
+    <div class="hero-actions">
+      <a href="https://aesthetic-alpaca-769b17.netlify.app" class="btn-primary" target="_blank">Launch Dashboard</a>
+      <a href="#features" class="btn-secondary">Explore Features</a>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <span>Scroll</span>
+    <div class="line"></div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="section-inner">
+    <div class="section-label reveal">✦ Features</div>
+    <h2 class="section-title reveal">Built for Precision</h2>
+    <p class="section-sub reveal">Every detail engineered for reliable, undetected booking automation.</p>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">⚡</div>
+        <h3>Parallel Booking</h3>
+        <p>Three students booked simultaneously — each with their own Chrome instance and independent thread. Zero cross-contamination.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🛡️</div>
+        <h3>Anti-Detection</h3>
+        <p>Human-like delays (1.5–5.5s), randomized timing, burst mode polling at 2–3s. Avoids Goethe server rate limits and CAPTCHA triggers.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🎯</div>
+        <h3>Burst Mode</h3>
+        <p>Precision polling window: 10s before slot time, 150s after. Aggressive 2–3s polling during the critical window, relaxed 45s intervals otherwise.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">📊</div>
+        <h3>Live Dashboard</h3>
+        <p>Real-time SSE streaming with color-coded progress bars, terminal-style logs, and per-student status indicators. Dark theme included.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🔔</div>
+        <h3>Multi-Channel Alerts</h3>
+        <p>Telegram and Email notifications on success, failure, or progress milestones. Stay informed anywhere.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🔐</div>
+        <h3>Secure Auth</h3>
+        <p>HMAC-based authentication with 24h token expiry. Password-protected dashboard with forgot-password recovery flow.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="students" style="background:rgba(255,255,255,0.01);border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04)">
+  <div class="section-inner">
+    <div class="section-label reveal">✦ Students</div>
+    <h2 class="section-title reveal">Three Exams, One Account</h2>
+    <p class="section-sub reveal">All three students booked under a single Goethe-Institut account, each targeting a different exam slot.</p>
+    <div class="student-cards">
+      <div class="student-card reveal">
+        <div class="student-name">Abeer Meer</div>
+        <div class="student-exam a1">A1</div>
+        <div class="student-detail"><strong>Location</strong> Karachi</div>
+        <div class="student-detail"><strong>Time</strong> 10:00 AM</div>
+        <div class="student-detail"><strong>Date</strong> July 17, 2026</div>
+      </div>
+      <div class="student-card reveal">
+        <div class="student-name">Hamza Rafiq</div>
+        <div class="student-exam a2">A2</div>
+        <div class="student-detail"><strong>Location</strong> Lahore</div>
+        <div class="student-detail"><strong>Time</strong> 10:05 AM</div>
+        <div class="student-detail"><strong>Date</strong> July 17, 2026</div>
+      </div>
+      <div class="student-card reveal">
+        <div class="student-name">Husnain Ali</div>
+        <div class="student-exam b1">B1</div>
+        <div class="student-detail"><strong>Location</strong> Karachi</div>
+        <div class="student-detail"><strong>Time</strong> 10:10 AM</div>
+        <div class="student-detail"><strong>Date</strong> July 17, 2026</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="flow">
+  <div class="section-inner">
+    <div class="section-label reveal">✦ How It Works</div>
+    <h2 class="section-title reveal">The Booking Pipeline</h2>
+    <p class="section-sub reveal">From launch to confirmation — every step the bot executes automatically.</p>
+    <div class="flow-steps">
+      <div class="flow-step reveal">
+        <div class="flow-step-num">1</div>
+        <h4>Burst Wait</h4>
+        <p>Smart delay calculation. Wakes up 10s before target time, enters 2–3s burst polling mode for 150s.</p>
+      </div>
+      <div class="flow-step reveal">
+        <div class="flow-step-num">2</div>
+        <h4>Login</h4>
+        <p>Navigates to Goethe CAS login, enters credentials, handles MFA if prompted. Retries with exponential backoff.</p>
+      </div>
+      <div class="flow-step reveal">
+        <div class="flow-step-num">3</div>
+        <h4>Navigate Exam</h4>
+        <p>Selects the correct exam level (A1/A2/B1), location (Karachi/Lahore), and date. Handles dynamic page transitions.</p>
+      </div>
+      <div class="flow-step reveal">
+        <div class="flow-step-num">4</div>
+        <h4>Poll Slot</h4>
+        <p>Monitors the exact time slot in burst mode. Refreshes every 2–3 seconds until the slot appears, then clicks immediately.</p>
+      </div>
+      <div class="flow-step reveal">
+        <div class="flow-step-num">5</div>
+        <h4>Submit Booking</h4>
+        <p>Fills booking form, handles CAPTCHA if configured, submits. Retries on failure with smart backoff.</p>
+      </div>
+      <div class="flow-step reveal">
+        <div class="flow-step-num">6</div>
+        <h4>Confirm</h4>
+        <p>Verifies booking confirmation page. Sends success notification via Telegram and Email. Logs completion.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="timeline" style="background:rgba(255,255,255,0.01);border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04)">
+  <div class="section-inner">
+    <div class="section-label reveal">✦ Timeline</div>
+    <h2 class="section-title reveal">Project Journey</h2>
+    <p class="section-sub reveal">From concept to deployment — the complete development timeline.</p>
+    <div class="timeline">
+      <div class="tl-item reveal">
+        <div class="tl-date">Week 1</div>
+        <div class="tl-title">Core Engine</div>
+        <div class="tl-desc">Selenium-based booking helper with stealth mode, smart retry, burst polling, and parallel execution.</div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-date">Week 2</div>
+        <div class="tl-title">Backend & Auth</div>
+        <div class="tl-desc">Flask API with HMAC auth, SQLite persistence, Telegram/Email notifications, and stop-event control.</div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-date">Week 3</div>
+        <div class="tl-title">Frontend Dashboard</div>
+        <div class="tl-desc">Modern dark-theme UI with SSE live streaming, student cards, run/schedule controls, and login overlay.</div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-date">Week 4</div>
+        <div class="tl-title">Mock Testing</div>
+        <div class="tl-desc">End-to-end test against mock Goethe site. All 6 booking steps verified working with mock URL override.</div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-date">Week 5</div>
+        <div class="tl-title">Production Deploy</div>
+        <div class="tl-desc">Railway backend (512MB), Netlify frontend, custom domain ready. Awaiting July 17 slot opening.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tech">
+  <div class="section-inner" style="text-align:center">
+    <div class="section-label reveal">✦ Stack</div>
+    <h2 class="section-title reveal">Technology</h2>
+    <p class="section-sub reveal" style="margin:0 auto">Built with modern tools for reliability and performance.</p>
+    <div class="tech-grid">
+      <span class="tech-tag">Python 3.11</span>
+      <span class="tech-tag">Selenium</span>
+      <span class="tech-tag">Flask</span>
+      <span class="tech-tag">SQLite</span>
+      <span class="tech-tag">Railway</span>
+      <span class="tech-tag">Netlify</span>
+      <span class="tech-tag">ChromeDriver</span>
+      <span class="tech-tag">SSE</span>
+      <span class="tech-tag">HMAC Auth</span>
+      <span class="tech-tag">Telegram API</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>✦ Goethe Booking Bot — Built by Abeer Meer</p>
+</footer>
+
+<script>
+// ── Stars ──
+const canvas = document.getElementById('stars-canvas');
+const ctx = canvas.getContext('2d');
+let stars = [];
+function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}
+resizeCanvas();
+window.addEventListener('resize',resizeCanvas);
+for(let i=0;i<160;i++){stars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.5+0.3,a:Math.random(),s:Math.random()*0.005+0.002})}
+function drawStars(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  stars.forEach(s=>{
+    s.a+=s.s;
+    const alpha=(Math.sin(s.a)+1)/2;
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${alpha*0.6})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ── Custom Cursor ──
+const cursor=document.getElementById('cursor');
+const follower=document.getElementById('cursor-follower');
+let mx=0,my=0,fx=0,fy=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.left=mx+'px';cursor.style.top=my+'px'});
+function followCursor(){fx+=(mx-fx)*0.15;fy+=(my-fy)*0.15;follower.style.left=fx+'px';follower.style.top=fy+'px';requestAnimationFrame(followCursor)}
+followCursor();
+document.querySelectorAll('a,button,.feature-card,.student-card,.tech-tag, .nav-cta').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cursor.classList.add('hover'));
+  el.addEventListener('mouseleave',()=>cursor.classList.remove('hover'));
+});
+
+// ── Navbar Scroll ──
+const navbar=document.getElementById('navbar');
+window.addEventListener('scroll',()=>{navbar.classList.toggle('scrolled',window.scrollY>60)});
+
+// ── Reveal on Scroll ──
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}});
+},{threshold:0.15});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+
+// ── Smooth counter animation for stats ──
+function animateCounter(el,target,duration=2000){
+  const start=performance.now();
+  function update(now){
+    const t=Math.min((now-start)/duration,1);
+    const eased=1-Math.pow(1-t,3);
+    el.textContent=Math.floor(eased*target)+(target>100?'+':'');
+    if(t<1)requestAnimationFrame(update);
+    else el.textContent=target+(target>100?'+':'');
+  }
+  requestAnimationFrame(update);
+}
+</script>
+</body>
+</html>

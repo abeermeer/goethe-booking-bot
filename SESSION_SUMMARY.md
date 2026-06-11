@@ -1,4 +1,4 @@
-# Goethe Booking Bot — Session Summary (Updated 11 Jun 2026)
+# Goethe Booking Bot — Session Summary (Updated 12 Jun 2026)
 
 ## Project
 Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2, B1) — multi-student, multi-city.
@@ -19,7 +19,24 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 | **Frontend (Netlify)** | https://aesthetic-alpaca-769b17.netlify.app | ✅ Live |
 | **Backend (Railway)** | https://goethe-booking-bot-production-a6a6.up.railway.app | ✅ Online |
 | **Mock Site (Netlify)** | https://goethe-bot-mock.netlify.app | ✅ Live |
+| **Presentation (Netlify)** | https://goethe-bot-presentation.netlify.app | ✅ Live |
 | **GitHub** | https://github.com/abeermeer/goethe-booking-bot | ✅ Latest |
+
+## Latest Changes (12 Jun 2026)
+
+### Presentation Site (goethe-bot-presentation.netlify.app)
+- Built from scratch — dark cinematic theme with starfield canvas background
+- Custom cursor with follower, scroll reveal animations (vanilla JS, no CDN deps)
+- Sections: Hero, Features, Students, How It Works (6-step flow), Timeline, Tech Stack
+- Fixed GSAP CDN failure bug — replaced with `IntersectionObserver` + CSS transitions
+- Navbar CTA and hero button link to main dashboard
+- Mobile bottom bar with dashboard link for small screens
+- Footer credit: "Built by Abeer Meer"
+
+### Bot Dashboard Accidentally Overwritten
+- First presentation deploy went to `aesthetic-alpaca-769b17` (wrong site)
+- Dashboard was showing presentation content for ~30 mins
+- Fixed: redeployed `frontend/` to correct site
 
 ## Latest Changes (11 Jun 2026)
 
@@ -60,7 +77,8 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 |------|---------|
 | `booking_helper.py` | Core bot engine (1165 lines) |
 | `webapp.py` | Flask backend API with auth (500+ lines) |
-| `frontend/index.html` | Web dashboard with login page (780+ lines) |
+| `frontend/index.html` | Web dashboard with login page |
+| `presentation/index.html` | Presentation site (cinematic theme, scroll reveals) |
 | `config.csv` | Student credentials (gitignored) |
 | `db.py` | SQLite persistence |
 | `notifications.py` | Telegram + Email notifications (WHAPI removed) |
@@ -76,8 +94,10 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 - Netlify Deploy Token: `NETLIFY_DEPLOY_TOKEN_REDACTED`
 - Netlify URL: `https://aesthetic-alpaca-769b17.netlify.app`
 - Mock Netlify URL: `https://goethe-bot-mock.netlify.app`
+- Presentation Site ID: `bb610061-8eff-4a22-bd50-f4c56a5f1c10`
+- Presentation URL: `https://goethe-bot-presentation.netlify.app`
 
-## Current Config (3 students)
+## Current Config (3 students — all same account)
 | Name | Level | City | Booking DateTime |
 |------|-------|------|-----------------|
 | Abeer Meer | A1 | Karachi | 2026-07-17T10:00:00 |
@@ -90,6 +110,7 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 - [x] Stop button works at any step
 - [x] Mock URL override via env vars
 - [x] Telegram notifications working
+- [x] Presentation site deployed
 - [ ] Connect custom domain to Netlify (CNAME or nameservers)
 - [ ] Set Railway env vars: CAPTCHA_API_KEY, SMTP_* (as needed)
 - [ ] On July 17: open Netlify URL → connect to Railway → login → click Start Bot ~10 min before 10:00
@@ -101,6 +122,9 @@ python webapp.py
 
 # Deploy frontend to Netlify
 netlify deploy --prod --dir=frontend
+
+# Deploy presentation to Netlify
+netlify deploy --prod --dir=presentation --site bb610061-8eff-4a22-bd50-f4c56a5f1c10
 
 # Deploy backend to Railway
 $env:RAILWAY_API_TOKEN = "RAILWAY_TOKEN_REDACTED"
