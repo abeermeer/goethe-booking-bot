@@ -16,8 +16,8 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 ## Deployments (all currently live)
 | Service | URL | Status |
 |---------|-----|--------|
-| **Frontend (Netlify)** | https://aesthetic-alpaca-769b17.netlify.app | ✅ Live |
-| **Backend (Railway)** | https://goethe-booking-bot-production-a6a6.up.railway.app | ✅ Online |
+| **Frontend (Netlify)** | https://goethe-booking-dashboard.netlify.app | ✅ Live |
+| **Backend (Railway)** | https://goethe-booking-bot-production.up.railway.app | ✅ Online |
 | **Mock Site (Netlify)** | https://goethe-bot-mock.netlify.app | ✅ Live |
 | **Presentation (Netlify)** | https://goethe-bot-presentation.netlify.app | ✅ Live |
 | **GitHub** | https://github.com/abeermeer/goethe-booking-bot | ✅ Latest |
@@ -121,7 +121,7 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 - Railway URL: `https://goethe-booking-bot-production-a6a6.up.railway.app`
 - Netlify Site ID: `NETLIFY_SITE_ID_REDACTED`
 - Netlify Deploy Token: `NETLIFY_DEPLOY_TOKEN_REDACTED`
-- Netlify URL: `https://aesthetic-alpaca-769b17.netlify.app`
+- Netlify URL: `https://goethe-booking-dashboard.netlify.app`
 - Mock Netlify URL: `https://goethe-bot-mock.netlify.app`
 - Presentation Site ID: `bb610061-8eff-4a22-bd50-f4c56a5f1c10`
 - Presentation URL: `https://goethe-bot-presentation.netlify.app`
