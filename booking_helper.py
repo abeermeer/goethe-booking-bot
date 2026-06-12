@@ -193,8 +193,10 @@ def load_all_students(path: str) -> List[Dict[str, str]]:
         return rows
 
 
-def parse_exam_time_str(raw: str) -> dt.datetime:
+def parse_exam_time_str(raw: str) -> Optional[dt.datetime]:
     raw = raw.strip()
+    if not raw:
+        return None
     if "T" in raw or "-" in raw:
         return dt.datetime.fromisoformat(raw)
     today = dt.date.today().isoformat()
@@ -239,29 +241,41 @@ def create_driver(use_headless: bool, logger: logging.Logger, proxy: Optional[st
     ua = random.choice(USER_AGENTS)
     vp = random.choice(VIEWPORTS)
     options.add_argument(f"--user-agent={ua}")
-    if os.name == "nt":
-        if use_headless:
-            options.add_argument("--headless=new")
-        options.add_argument(f"--window-size={vp[0]},{vp[1]}")
-    else:
+
+    # ── Platform-specific setup ──
+    if os.name != "nt":
         for chrome_bin in ["/opt/google/chrome/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"]:
             if Path(chrome_bin).exists():
                 options.binary_location = chrome_bin
                 break
-        options.add_argument("--headless=new")
-        options.add_argument(f"--window-size={vp[0]},{vp[1]}")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-background-networking")
-        options.add_argument("--disable-sync")
-        options.add_argument("--disable-translate")
-        options.add_argument("--disable-default-apps")
-        options.add_argument("--mute-audio")
-        options.add_argument("--no-first-run")
         os.environ["DBUS_SESSION_BUS_ADDRESS"] = "/dev/null"
         os.environ["DISPLAY"] = ":99"
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-background-networking")
+    options.add_argument("--disable-sync")
+    options.add_argument("--disable-translate")
+    options.add_argument("--disable-default-apps")
+    options.add_argument("--mute-audio")
+    options.add_argument("--no-first-run")
+
+    # ── Memory optimization for Railway 512MB ──
+    options.add_argument("--process-per-site")
+    options.add_argument("--disable-component-update")
+    options.add_argument("--disable-component-extensions-with-background-pages")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-features=VizDisplayCompositor,TranslateUI,ChromeWhatsNewUI,InterestFeedContentSuggestions,OptimizationHints")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--log-level=3")
+    options.add_argument("--silent-debugger-extension-api")
+    options.add_argument("--disable-search-engine-choice-screen")
+
+    if use_headless or os.name != "nt":
+        options.add_argument("--headless=new")
+    options.add_argument(f"--window-size={min(vp[0],1280)},{min(vp[1],720)}")
 
     # ── Proxy ──
     if proxy:
@@ -924,6 +938,11 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
     exam_url = get_exam_url(level)
     exam_dt = parse_exam_time_str(booking_time_str) if booking_time_str else dt.datetime.now()
 
+    student_key = f"{name}|{level}|{city}"
+    resume_step = db.get_checkpoint(student_key)
+    if resume_step > 0:
+        logger.info("Resuming from checkpoint step %d", resume_step)
+
     driver = None
     result = {"name": name, "email": email, "level": level, "city": city, "status": "failed"}
 
@@ -944,6 +963,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
             if stop_event.is_set():
                 logger.warning("Stop requested by user. Aborting.")
                 result["status"] = "stopped"
+                db.clear_checkpoint(student_key)
                 return result
 
             burst = exam_dt - dt.timedelta(seconds=BURST_BEFORE_SECONDS) <= dt.datetime.now() <= exam_dt + dt.timedelta(seconds=BURST_AFTER_SECONDS)
@@ -1003,6 +1023,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 enforce_single_tab(driver)
                 consecutive_errors = 0
                 step1_done = True
+                db.save_checkpoint(student_key, 1)
                 break
 
             except (TimeoutException, StaleElementReferenceException, NoSuchElementException) as exc:
@@ -1030,34 +1051,46 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
 
-        logger.info("══ STEP 2: Clicking Continue ══")
-        click_continue_button(driver, logger)
-        enforce_single_tab(driver)
-        logger.info("★ STEP 2 DONE")
-
-        random_human_delay(2.0, 4.0)
-        if stop_event.is_set():
-            logger.warning("Stop requested by user. Aborting.")
-            result["status"] = "stopped"; return result
-
-        logger.info("══ STEP 3: Clicking Book for Myself ══")
-        click_book_for_myself(driver, logger)
-        enforce_single_tab(driver)
-        logger.info("★ STEP 3 DONE")
-
-        random_human_delay(2.0, 4.0)
-        if stop_event.is_set():
-            logger.warning("Stop requested by user. Aborting.")
-            result["status"] = "stopped"; return result
-
-        if email and password:
-            logged_in = login_to_goethe(driver, email, password, logger)
-            if not logged_in:
-                logger.warning("Login step failed or skipped. Attempting form fill anyway.")
-                driver.save_screenshot(f"debug_login_{name}.png")
+        if resume_step >= 2:
+            logger.info("⏩ Skipping STEP 2 (already completed)")
         else:
-            logger.warning("No credentials provided — skipping login automation.")
-            driver.save_screenshot(f"debug_no_creds_{name}.png")
+            logger.info("══ STEP 2: Clicking Continue ══")
+            click_continue_button(driver, logger)
+            enforce_single_tab(driver)
+            logger.info("★ STEP 2 DONE")
+            db.save_checkpoint(student_key, 2)
+
+        random_human_delay(2.0, 4.0)
+        if stop_event.is_set():
+            logger.warning("Stop requested by user. Aborting.")
+            result["status"] = "stopped"; return result
+
+        if resume_step >= 3:
+            logger.info("⏩ Skipping STEP 3 (already completed)")
+        else:
+            logger.info("══ STEP 3: Clicking Book for Myself ══")
+            click_book_for_myself(driver, logger)
+            enforce_single_tab(driver)
+            logger.info("★ STEP 3 DONE")
+            db.save_checkpoint(student_key, 3)
+
+        random_human_delay(2.0, 4.0)
+        if stop_event.is_set():
+            logger.warning("Stop requested by user. Aborting.")
+            result["status"] = "stopped"; return result
+
+        if resume_step >= 4:
+            logger.info("⏩ Skipping STEP 4 (already completed)")
+        else:
+            if email and password:
+                logged_in = login_to_goethe(driver, email, password, logger)
+                if not logged_in:
+                    logger.warning("Login step failed or skipped. Attempting form fill anyway.")
+                    driver.save_screenshot(f"debug_login_{name}.png")
+            else:
+                logger.warning("No credentials provided — skipping login automation.")
+                driver.save_screenshot(f"debug_no_creds_{name}.png")
+            db.save_checkpoint(student_key, 4)
 
         random_human_delay(2.0, 4.0)
         random_scroll(driver)
@@ -1065,16 +1098,20 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
 
-        # ── CAPTCHA check before form fill ──
-        captcha_found = detect_captcha(driver)
-        if captcha_found:
-            logger.info("CAPTCHA detected (%s), attempting to solve...", captcha_found)
-            solve_captcha(driver, logger)
+        if resume_step >= 5:
+            logger.info("⏩ Skipping STEP 5 (already completed)")
+        else:
+            # ── CAPTCHA check before form fill ──
+            captcha_found = detect_captcha(driver)
+            if captcha_found:
+                logger.info("CAPTCHA detected (%s), attempting to solve...", captcha_found)
+                solve_captcha(driver, logger)
 
-        form_ok = fill_registration_form(driver, student, logger)
-        if not form_ok:
-            logger.warning("Form fill had issues. Proceeding to capture state.")
-            driver.save_screenshot(f"debug_form_{name}.png")
+            form_ok = fill_registration_form(driver, student, logger)
+            if not form_ok:
+                logger.warning("Form fill had issues. Proceeding to capture state.")
+                driver.save_screenshot(f"debug_form_{name}.png")
+            db.save_checkpoint(student_key, 5)
 
         random_human_delay(1.0, 2.0)
         random_mouse_wander(driver)
@@ -1082,6 +1119,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         conf = capture_confirmation(driver, name, logger)
         result.update(conf)
         result["status"] = conf.get("status", "submitted")
+        db.clear_checkpoint(student_key)
 
         notifications.notify_all(f"Booking complete: {name}", f"{level} | {city} | Status: {result['status']}", logger)
 

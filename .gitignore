@@ -13,3 +13,6 @@ config.csv
 
 # Local Netlify folder
 .netlify
+
+bot_data.db
+*.ndjson

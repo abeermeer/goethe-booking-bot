@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Goethe Booking Bot</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0f0f1a">
 <style>
   :root {
     --bg: #0f0f1a;
@@ -207,6 +209,17 @@
     max-height: 150px; overflow: auto; margin-top: 8px; white-space: pre; line-height: 1.4; display: none;
   }
 
+  /* Countdown */
+  .countdown-bar {
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 16px; margin-bottom: 16px; font-size: 13px; min-height: 44px;
+  }
+  .countdown-bar .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .countdown-bar .time { color: var(--accent2); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .countdown-bar .time.urgent { color: var(--yellow); }
+  .countdown-bar .time.critical { color: var(--red); animation: pulse 1s infinite; }
+
   /* Login overlay */
   .login-overlay {
     position: fixed; inset: 0; z-index: 9999;
@@ -274,6 +287,12 @@
     <input type="text" id="backendUrl" placeholder="http://localhost:5000">
     <button class="btn btn-outline btn-sm" onclick="connectBackend()">Connect</button>
     <span id="backendStatus" class="status-text">Not connected</span>
+  </div>
+
+  <!-- Countdown -->
+  <div id="countdownBar" class="countdown-bar" style="display:none;">
+    <span class="label">⏱ Next slot</span>
+    <span id="countdownText" class="time">--</span>
   </div>
 
   <!-- Row 1: Controls -->
@@ -551,6 +570,7 @@ async function loadConfigFromBackend() {
         booking_time: s.booking_datetime, status: "Not started",
         color: "secondary", details: ""
       })));
+      startCountdown(data.students);
       document.getElementById("configPreview").textContent =
         "name,email,password,level,city,booking_datetime,...\n" +
         data.students.map(s => `${s.name},${s.email},${s.password},${s.level||s.exam_level||''},${s.city},${s.booking_datetime}`).join("\n");
@@ -770,6 +790,76 @@ document.getElementById("tgToken").onchange = () => localStorage.setItem("tg_tok
 document.getElementById("tgChatId").onchange = () => localStorage.setItem("tg_chat_id", document.getElementById("tgChatId").value);
 document.getElementById("emailTo").onchange = () => localStorage.setItem("email_to", document.getElementById("emailTo").value);
 document.getElementById("waTo").onchange = () => localStorage.setItem("wa_to", document.getElementById("waTo").value);
+
+// ── Countdown Timer ──
+let countdownTimer = null;
+let countdownTargets = [];
+
+function updateCountdown() {
+  const bar = document.getElementById("countdownBar");
+  const text = document.getElementById("countdownText");
+  if (!countdownTargets.length) {
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "flex";
+
+  const now = Date.now();
+  let nearest = null;
+  let nearestLabel = "";
+
+  for (const t of countdownTargets) {
+    const diff = t.time - now;
+    if (!nearest || diff < nearest) {
+      nearest = diff;
+      nearestLabel = t.label;
+    }
+  }
+
+  if (nearest <= 0) {
+    text.textContent = "🔴 Slot time reached!";
+    text.className = "time critical";
+    return;
+  }
+
+  const days = Math.floor(nearest / 86400000);
+  const hours = Math.floor((nearest % 86400000) / 3600000);
+  const mins = Math.floor((nearest % 3600000) / 60000);
+  const secs = Math.floor((nearest % 60000) / 1000);
+
+  let display = "";
+  if (days > 0) display += `${days}d `;
+  display += `${String(hours).padStart(2,"0")}:${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
+  text.textContent = `${nearestLabel}: ${display}`;
+
+  text.className = "time";
+  if (nearest < 60000) text.classList.add("critical");
+  else if (nearest < 300000) text.classList.add("urgent");
+}
+
+function startCountdown(students) {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTargets = [];
+  if (!students || !students.length) {
+    document.getElementById("countdownBar").style.display = "none";
+    return;
+  }
+  for (const s of students) {
+    const dt = s.booking_datetime || s.booking_time;
+    if (dt) {
+      const t = new Date(dt).getTime();
+      if (!isNaN(t) && t > Date.now()) {
+        countdownTargets.push({ time: t, label: `${s.name || s.level} ${s.level}` });
+      }
+    }
+  }
+  if (!countdownTargets.length) {
+    document.getElementById("countdownBar").style.display = "none";
+    return;
+  }
+  updateCountdown();
+  countdownTimer = setInterval(updateCountdown, 1000);
+}
 
 // ── Helpers ──
 function escHtml(s) {

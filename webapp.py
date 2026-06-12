@@ -16,6 +16,7 @@ Frontend connects via Backend URL input.
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import hmac
 import json
@@ -29,6 +30,8 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from collections import defaultdict
 
 import flask
 from flask import Flask, Response, jsonify, request
@@ -46,6 +49,7 @@ AUTH_EMAIL = os.environ.get("AUTH_EMAIL", "admin@example.com")
 AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "ADMIN_PASSWORD_REDACTED")
 AUTH_SALT = os.environ.get("AUTH_SALT", "goethe-bot-salt-2026")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "admin@example.com")
+PROCESS_START_TIME = time.time()
 
 def _make_token(email: str) -> str:
     raw = f"{email}:{AUTH_SALT}:{int(time.time() / 86400)}"
@@ -98,6 +102,27 @@ class DbLogHandler(logging.Handler):
             pass
 
 
+class JsonFileHandler(logging.Handler):
+    def __init__(self, path: str):
+        super().__init__()
+        self.path = path
+        self._lock = threading.Lock()
+
+    def emit(self, record: logging.LogRecord):
+        try:
+            entry = json.dumps({
+                "time": datetime.now().isoformat(),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": record.getMessage(),
+            })
+            with self._lock:
+                with open(self.path, "a") as f:
+                    f.write(entry + "\n")
+        except Exception:
+            pass
+
+
 def setup_web_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -107,6 +132,8 @@ def setup_web_logger(name: str) -> logging.Logger:
     handler.setFormatter(fmt)
     logger.addHandler(handler)
     logger.addHandler(DbLogHandler())
+    json_handler = JsonFileHandler(str(PROJECT_DIR / "bot_logs.ndjson"))
+    logger.addHandler(json_handler)
     return logger
 
 
@@ -181,10 +208,28 @@ def add_cors(resp):
     return resp
 
 
+# ── Rate limiter ──
+_login_attempts = defaultdict(list)
+RATE_LIMIT = 5  # max attempts
+RATE_WINDOW = 300  # seconds (5 min)
+
+
+def _check_rate_limit(ip: str) -> bool:
+    now = time.time()
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < RATE_WINDOW]
+    if len(_login_attempts[ip]) >= RATE_LIMIT:
+        return False
+    _login_attempts[ip].append(now)
+    return True
+
+
 # ── Auth routes ──
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
+    ip = request.remote_addr or "unknown"
+    if not _check_rate_limit(ip):
+        return jsonify({"ok": False, "error": "Too many attempts. Try again in 5 minutes."}), 429
     data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
@@ -218,7 +263,13 @@ def require_auth(f):
 @app.route("/")
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "running": bot_running})
+    uptime_secs = int(time.time() - PROCESS_START_TIME)
+    return jsonify({
+        "status": "ok",
+        "running": bot_running,
+        "uptime_seconds": uptime_secs,
+        "uptime_human": f"{uptime_secs // 3600}h {(uptime_secs % 3600) // 60}m",
+    })
 
 
 @app.route("/api/status")

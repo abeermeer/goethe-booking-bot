@@ -110,4 +110,32 @@ def get_state(key: str, default: str = "") -> str:
     return row["value"] if row else default
 
 
+def delete_state(key: str):
+    conn = _get_conn()
+    conn.execute("DELETE FROM bot_state WHERE key = ?", (key,))
+    conn.commit()
+
+
+def save_checkpoint(student_key: str, step: int):
+    set_state(f"checkpoint_{student_key}", str(step))
+
+
+def get_checkpoint(student_key: str) -> int:
+    val = get_state(f"checkpoint_{student_key}", "0")
+    try:
+        return int(val)
+    except ValueError:
+        return 0
+
+
+def clear_checkpoint(student_key: str):
+    delete_state(f"checkpoint_{student_key}")
+
+
+def clear_all_checkpoints():
+    conn = _get_conn()
+    conn.execute("DELETE FROM bot_state WHERE key LIKE 'checkpoint_%'")
+    conn.commit()
+
+
 init_db()

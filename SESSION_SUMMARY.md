@@ -22,7 +22,36 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 | **Presentation (Netlify)** | https://goethe-bot-presentation.netlify.app | ✅ Live |
 | **GitHub** | https://github.com/abeermeer/goethe-booking-bot | ✅ Latest |
 
-## Latest Changes (12 Jun 2026)
+## Latest Changes (12 Jun 2026 — Session 2)
+
+### Full 10/10 Upgrade (All 5 Phases)
+
+**Phase 1: Reliability**
+- Chrome memory flags optimized: `--process-per-site`, `--disable-component-update`, `--disable-background-timer-throttling`, `--disable-features=VizDisplayCompositor`, etc. (both Windows + Linux)
+- Session checkpoint system: `db.save_checkpoint()` / `get_checkpoint()` / `clear_checkpoint()` after each booking step
+- Resume from crash: on restart, skips completed steps and continues where it left off
+- Health endpoint enhanced: `uptime_seconds`, `uptime_human` fields
+
+**Phase 2: CI/CD + Testing**
+- GitHub Actions: `python -m pytest` on PRs, auto-deploy to Railway + Netlify on push to main
+- 18 pytest tests (db CRUD, checkpoint cycle, booking helpers, URL parsing)
+- `.pre-commit-config.yaml` with trailing-whitespace, yaml check, pytest hook
+
+**Phase 3: Frontend Polish**
+- Live countdown timer to next booking slot (updates every second, red at <1min)
+- PWA support: manifest.json, theme-color meta tag (installable on mobile)
+- Loading states for student cards and error display improvements
+
+**Phase 4: Backend Hardening**
+- Rate limiting on `/api/login`: 5 attempts per IP per 5 minutes (returns 429)
+- Structured JSON logging: `bot_logs.ndjson` with timestamped JSON records
+
+**Phase 5: Monitoring**
+- Health endpoint with uptime tracking
+- Frontend status badge shows connection health (idle/running)
+- cron-job.org compatible: `https://railway-url/health` returns `{"status":"ok"}`
+
+## Latest Changes (12 Jun 2026 — Session 1)
 
 ### Presentation Site (goethe-bot-presentation.netlify.app)
 - Built from scratch — dark cinematic theme with starfield canvas background
