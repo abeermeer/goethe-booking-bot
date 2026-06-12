@@ -41,6 +41,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 
 import booking_helper as bot
 import db
+import alexa
 
 app = Flask(__name__)
 
@@ -49,6 +50,7 @@ AUTH_EMAIL = os.environ.get("AUTH_EMAIL", "admin@example.com")
 AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "ADMIN_PASSWORD_REDACTED")
 AUTH_SALT = os.environ.get("AUTH_SALT", "goethe-bot-salt-2026")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "admin@example.com")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROCESS_START_TIME = time.time()
 
 def _make_token(email: str) -> str:
@@ -515,6 +517,64 @@ def _get_loaded_students() -> List[Dict]:
         return bot.load_all_students(config_path)
     except Exception:
         return []
+
+
+# ── Alexa AI Assistant ──
+
+def _alexa_context() -> dict:
+    return {
+        "students": _get_loaded_students(),
+        "running": bot_running,
+        "status": {k: v for k, v in student_status.items()},
+        "_actions": {
+            "stop": lambda: bot_stop_event.set(),
+            "retry": lambda student: _retry_one_student(student),
+        },
+    }
+
+def _retry_one_student(student: Dict):
+    global bot_stop_event, bot_running, student_status, student_results
+    import db
+    bot_stop_event.clear()
+    key = _student_key(student)
+    student_logger = setup_web_logger(f"retry_{student.get('name', '?')}")
+    student_logger.info("Manual retry for %s", key)
+    result = bot.smart_retry(student, use_headless=True, logger=student_logger, stop_event=bot_stop_event, immediate=True)
+    student_results.append(result)
+    db.update_student_status(key, result.get("status", "failed"), result)
+    status = result.get("status", "failed")
+    if status == "confirmed":
+        student_status[key] = {"status": "Confirmed!", "color": "success", "details": f"Ref: {result.get('reference', 'N/A')}"}
+    elif status == "submitted":
+        student_status[key] = {"status": "Submitted", "color": "success", "details": "Form submitted"}
+    elif status == "stopped":
+        student_status[key] = {"status": "Stopped", "color": "danger", "details": "Cancelled by user"}
+    elif status == "failed":
+        student_status[key] = {"status": "Failed", "color": "danger", "details": "Error occurred"}
+    else:
+        student_status[key] = {"status": status, "color": "warning", "details": ""}
+
+if GEMINI_API_KEY:
+    alexa_assistant = alexa.AlexaAssistant(api_key=GEMINI_API_KEY, context_provider=_alexa_context)
+else:
+    alexa_assistant = None
+
+
+@app.route("/api/chat", methods=["POST"])
+@require_auth
+def api_chat():
+    if not alexa_assistant:
+        return jsonify({"ok": False, "error": "Alexa is not configured. Set GEMINI_API_KEY environment variable."}), 400
+    data = request.get_json(silent=True) or {}
+    message = data.get("message", "").strip()
+    history = data.get("history", [])
+    if not message:
+        return jsonify({"ok": False, "error": "Message is required"}), 400
+    try:
+        reply = alexa_assistant.process(message, history)
+        return jsonify({"ok": True, "reply": reply})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 def main():
