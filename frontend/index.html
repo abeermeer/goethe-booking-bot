@@ -211,14 +211,21 @@
 
   /* Countdown */
   .countdown-bar {
-    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 10px 16px; margin-bottom: 16px; font-size: 13px; min-height: 44px;
+    padding: 12px 16px; margin-bottom: 16px; font-size: 13px;
   }
-  .countdown-bar .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .countdown-bar .time { color: var(--accent2); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .countdown-bar .time.urgent { color: var(--yellow); }
-  .countdown-bar .time.critical { color: var(--red); animation: pulse 1s infinite; }
+  .countdown-item {
+    flex: 1; min-width: 160px; background: var(--surface2); border-radius: 8px;
+    padding: 8px 12px; border-left: 3px solid var(--accent);
+  }
+  .countdown-item .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .countdown-item .exam { font-size: 13px; font-weight: 600; color: #fff; margin: 2px 0; }
+  .countdown-item .time { color: var(--accent2); font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .countdown-item .time.urgent { color: var(--yellow); }
+  .countdown-item .time.critical { color: var(--red); animation: pulse 1s infinite; }
+  .countdown-item .city { font-size: 10px; color: var(--muted); }
+  .countdown-empty { color: var(--muted); font-size: 12px; padding: 4px 0; }
 
   /* Login overlay */
   .login-overlay {
@@ -290,10 +297,7 @@
   </div>
 
   <!-- Countdown -->
-  <div id="countdownBar" class="countdown-bar" style="display:none;">
-    <span class="label">⏱ Next slot</span>
-    <span id="countdownText" class="time">--</span>
-  </div>
+  <div id="countdownBar" class="countdown-bar" style="display:none;"></div>
 
   <!-- Row 1: Controls -->
   <div class="grid grid-2">
@@ -795,46 +799,38 @@ document.getElementById("waTo").onchange = () => localStorage.setItem("wa_to", d
 let countdownTimer = null;
 let countdownTargets = [];
 
+function fmtCountdown(ms) {
+  if (ms <= 0) return "🔴 Now!";
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  let s = "";
+  if (days > 0) s += `${days}d `;
+  s += `${String(hours).padStart(2,"0")}:${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
+  return s;
+}
+
 function updateCountdown() {
   const bar = document.getElementById("countdownBar");
-  const text = document.getElementById("countdownText");
   if (!countdownTargets.length) {
     bar.style.display = "none";
     return;
   }
   bar.style.display = "flex";
-
   const now = Date.now();
-  let nearest = null;
-  let nearestLabel = "";
-
-  for (const t of countdownTargets) {
-    const diff = t.time - now;
-    if (!nearest || diff < nearest) {
-      nearest = diff;
-      nearestLabel = t.label;
-    }
-  }
-
-  if (nearest <= 0) {
-    text.textContent = "🔴 Slot time reached!";
-    text.className = "time critical";
+  const allPast = countdownTargets.every(t => t.time <= now);
+  if (allPast) {
+    bar.innerHTML = countdownTargets.map(t =>
+      `<div class="countdown-item" style="border-left-color:var(--green)"><div class="label">${t.exam}</div><div class="exam">${escHtml(t.name)}</div><div class="time critical">🔴 Slot passed</div><div class="city">${escHtml(t.city)}</div></div>`
+    ).join("");
     return;
   }
-
-  const days = Math.floor(nearest / 86400000);
-  const hours = Math.floor((nearest % 86400000) / 3600000);
-  const mins = Math.floor((nearest % 3600000) / 60000);
-  const secs = Math.floor((nearest % 60000) / 1000);
-
-  let display = "";
-  if (days > 0) display += `${days}d `;
-  display += `${String(hours).padStart(2,"0")}:${String(mins).padStart(2,"0")}:${String(secs).padStart(2,"0")}`;
-  text.textContent = `${nearestLabel}: ${display}`;
-
-  text.className = "time";
-  if (nearest < 60000) text.classList.add("critical");
-  else if (nearest < 300000) text.classList.add("urgent");
+  bar.innerHTML = countdownTargets.map(t => {
+    const diff = t.time - now;
+    const cls = diff < 60000 ? "critical" : diff < 300000 ? "urgent" : "";
+    return `<div class="countdown-item" style="border-left-color:${diff < 60000 ? 'var(--red)' : diff < 300000 ? 'var(--yellow)' : 'var(--accent)'}"><div class="label">${t.exam}</div><div class="exam">${escHtml(t.name)}</div><div class="time ${cls}">${fmtCountdown(diff)}</div><div class="city">${escHtml(t.city)}</div></div>`;
+  }).join("");
 }
 
 function startCountdown(students) {
@@ -848,8 +844,13 @@ function startCountdown(students) {
     const dt = s.booking_datetime || s.booking_time;
     if (dt) {
       const t = new Date(dt).getTime();
-      if (!isNaN(t) && t > Date.now()) {
-        countdownTargets.push({ time: t, label: `${s.name || s.level} ${s.level}` });
+      if (!isNaN(t)) {
+        countdownTargets.push({
+          time: t,
+          name: s.name || "Student",
+          exam: s.level || s.exam_level || "?",
+          city: s.city || "",
+        });
       }
     }
   }
