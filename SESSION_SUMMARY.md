@@ -165,4 +165,9 @@ railway variable delete KEY
 
 # Git push
 git add -A; git commit -m "message"; git push origin main
+
+## 12 Jun 2026 — Updated
+- Countdown fix: all 3 students (A1, A2, B1) now show their own countdown cards (was only showing nearest)
+- New Netlify domain (old one flagged by Google Safe Browsing): **https://goethe-booking-dashboard.netlify.app**
+- Committed & pushed: `9b856c8` fix: show countdown for all students not just nearest slot
 ```
