@@ -166,8 +166,10 @@ railway variable delete KEY
 # Git push
 git add -A; git commit -m "message"; git push origin main
 
-## 12 Jun 2026 — Updated
+## 12 Jun 2026 — Updated (v2)
 - Countdown fix: all 3 students (A1, A2, B1) now show their own countdown cards (was only showing nearest)
 - New Netlify domain (old one flagged by Google Safe Browsing): **https://goethe-booking-dashboard.netlify.app**
-- Committed & pushed: `9b856c8` fix: show countdown for all students not just nearest slot
+- Default Railway URL changed from `localhost:5000` → `https://goethe-booking-bot-production.up.railway.app`
+- GitHub Actions secrets set: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, `RAILWAY_API_TOKEN` — auto-deploy fixed
+- Commits: `9b856c8` (countdown fix), `40cd763` (summary update), `cf488b4` (correct Railway URL)
 ```
