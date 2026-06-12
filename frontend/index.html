@@ -5,392 +5,451 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Goethe Booking Bot</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0f0f1a">
+<meta name="theme-color" content="#0a0a0f">
 <style>
   :root {
-    --bg: #0f0f1a;
-    --surface: #1a1a2e;
-    --surface2: #222240;
-    --border: #2a2a4a;
-    --text: #e0e0f0;
-    --muted: #6c6c8a;
-    --accent: #6c5ce7;
-    --accent2: #a29bfe;
-    --green: #00c853;
-    --red: #ff1744;
-    --yellow: #ffc107;
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #1e1e2e;
+    --border2: #2a2a3e;
+    --text: #e8e8ed;
+    --text2: #9191a0;
+    --text3: #5c5c6e;
+    --accent: #4f8cff;
+    --accent-hover: #3a7af0;
+    --green: #2dd4a0;
+    --red: #f04a5a;
+    --yellow: #f5a623;
     --blue: #448aff;
-    --radius: 12px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg); color: var(--text); min-height: 100vh;
+    font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
   }
   .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
 
-  /* Header */
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 24px;
-    flex-wrap: wrap; gap: 12px;
-  }
-  .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-icon {
-    width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    font-size: 20px; color: white; font-weight: 700;
-  }
-  .logo h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
-  .logo span { font-size: 12px; color: var(--muted); font-weight: 400; display: block; }
-
   .badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500;
     background: var(--surface2); border: 1px solid var(--border);
   }
-  .badge .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .dot-idle { background: var(--muted); }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .dot-idle { background: var(--text3); }
   .dot-running { background: var(--green); animation: pulse 1.2s infinite; }
   .dot-stopping { background: var(--yellow); animation: pulse 0.8s infinite; }
   .dot-disconnected { background: var(--red); }
+
   @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
 
-  /* Connection bar */
-  .conn-bar {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 10px 16px; flex-wrap: wrap;
-  }
-  .conn-bar input {
-    flex: 1; min-width: 200px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 12px; color: var(--text); font-size: 13px; outline: none;
-  }
-  .conn-bar input:focus { border-color: var(--accent); }
-  .conn-bar .status-text { font-size: 12px; color: var(--muted); }
-  .conn-bar .status-text.ok { color: var(--green); }
-  .conn-bar .status-text.err { color: var(--red); }
-
-  /* Grid */
-  .grid { display: grid; gap: 16px; }
+  .grid { display: grid; gap: 14px; }
   .grid-2 { grid-template-columns: 1fr 1fr; }
   .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
   @media (max-width:900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
 
-  /* Card */
   .card {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 20px; transition: border-color 0.2s;
+    padding: 18px; transition: border-color 0.15s;
   }
-  .card:hover { border-color: rgba(108,92,231,0.3); }
+  .card:hover { border-color: var(--border2); }
   .card-hd {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
-  .card-hd h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-  .card-hd h3 .ico { font-size: 16px; }
+  .card-hd h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
 
-  /* Buttons */
   .btn {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
     border: none; cursor: pointer; transition: all 0.15s;
   }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover:not(:disabled) { background: var(--accent2); }
-  .btn-success { background: var(--green); color: white; }
-  .btn-success:hover:not(:disabled) { background: #00e676; }
-  .btn-danger { background: var(--red); color: white; }
-  .btn-danger:hover:not(:disabled) { background: #ff5252; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-success { background: var(--green); color: #0a0a0f; }
+  .btn-success:hover:not(:disabled) { background: #3edbab; }
+  .btn-danger { background: rgba(240,74,90,0.12); color: var(--red); }
+  .btn-danger:hover:not(:disabled) { background: rgba(240,74,90,0.2); }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn-outline:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
-  .btn-sm { font-size: 12px; padding: 6px 12px; }
+  .btn-outline:hover:not(:disabled) { border-color: var(--border2); color: var(--accent); }
+  .btn-sm { font-size: 12px; padding: 4px 10px; }
   .btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-  /* Form controls */
   input, select {
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 12px; color: var(--text); font-size: 13px; outline: none;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; color: var(--text); font-size: 13px; outline: none;
   }
   input:focus, select:focus { border-color: var(--accent); }
   input[type="file"] { display: none; }
   .input-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-  /* Student cards */
-  .student-grid { display: flex; flex-direction: column; gap: 10px; }
+  .student-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width:900px) { .student-grid { grid-template-columns: 1fr; } }
   .scard {
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 14px 16px; transition: all 0.2s; border-left: 3px solid var(--border);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; transition: border-color 0.15s;
   }
-  .scard.border-warning { border-left-color: var(--yellow); }
-  .scard.border-success { border-left-color: var(--green); }
-  .scard.border-danger { border-left-color: var(--red); }
-  .scard.border-info { border-left-color: var(--blue); }
-  .scard.border-secondary { border-left-color: var(--border); }
-  .scard-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-  .scard-name { font-size: 14px; font-weight: 600; }
-  .scard-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-  .scard-status { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
-  .scard-detail { font-size: 11px; color: var(--muted); }
+  .scard:hover { border-color: var(--border2); }
+  .scard-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .scard-name { font-size: 15px; font-weight: 600; }
+  .scard-meta { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .scard-status { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+  .scard-detail { font-size: 12px; color: var(--text3); }
+  .scard .exam-tag {
+    display: inline-flex; padding: 3px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .exam-A1 { background: rgba(79,140,255,0.12); color: #6b9eff; }
+  .exam-A2 { background: rgba(45,212,160,0.12); color: var(--green); }
+  .exam-B1 { background: rgba(245,166,35,0.12); color: var(--yellow); }
 
-  /* Progress bar */
-  .progress-wrap { margin-top: 8px; }
+  .progress-wrap { margin-top: 10px; }
   .progress-bar {
     height: 4px; background: var(--bg); border-radius: 4px; overflow: hidden;
   }
   .progress-fill {
     height: 100%; border-radius: 4px; transition: width 0.5s ease;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    background: var(--accent);
   }
   .progress-fill.done { background: var(--green); }
   .progress-fill.fail { background: var(--red); }
-  .progress-label { font-size: 10px; color: var(--muted); margin-top: 3px; display: flex; justify-content: space-between; }
+  .progress-label { font-size: 10px; color: var(--text2); margin-top: 3px; display: flex; justify-content: space-between; }
 
-  /* Steps timeline */
   .steps { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
   .step {
     font-size: 10px; padding: 2px 8px; border-radius: 4px;
-    background: var(--bg); color: var(--muted);
+    background: var(--surface2); color: var(--text3);
   }
-  .step.done { background: rgba(0,200,83,0.15); color: var(--green); }
-  .step.active { background: rgba(108,92,231,0.2); color: var(--accent2); }
-  .step.fail { background: rgba(255,23,68,0.15); color: var(--red); }
+  .step.done { background: rgba(45,212,160,0.12); color: var(--green); }
+  .step.active { background: rgba(79,140,255,0.12); color: var(--accent); }
+  .step.fail { background: rgba(240,74,90,0.12); color: var(--red); }
 
-  /* Log box */
   .log-box {
-    background: #070714; border: 1px solid var(--border); border-radius: 8px;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-    font-size: 11px; line-height: 1.6; height: 300px; overflow-y: auto;
+    background: #08080c; border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 12px; line-height: 1.7; height: 280px; overflow-y: auto;
     padding: 12px; white-space: pre-wrap; word-break: break-all;
   }
   .log-box::-webkit-scrollbar { width: 5px; }
   .log-box::-webkit-scrollbar-track { background: transparent; }
   .log-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  .log-INFO { color: var(--muted); }
+  .log-box::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+  .log-INFO { color: var(--text2); }
   .log-WARNING { color: var(--yellow); }
   .log-ERROR { color: var(--red); }
   .log-CRITICAL { color: var(--red); font-weight: 600; }
-  .log-HEARTBEAT { color: #1a1a2e; font-size: 9px; }
+  .log-HEARTBEAT { color: var(--text3); font-size: 10px; }
 
-  /* Schedule table */
   .sched-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .sched-table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 10px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-  .sched-table td { padding: 5px 8px; border-bottom: 1px solid rgba(42,42,74,0.5); }
+  .sched-table th { text-align: left; color: var(--text3); font-weight: 600; font-size: 10px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .sched-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
   .sched-group { margin-bottom: 12px; }
-  .sched-group h4 { font-size: 12px; color: var(--accent2); margin-bottom: 4px; }
-  .tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; }
-  .tag-open { background: rgba(0,200,83,0.15); color: var(--green); }
-  .tag-closed { background: rgba(255,23,68,0.15); color: var(--red); }
+  .sched-group h4 { font-size: 12px; color: var(--accent); margin-bottom: 4px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+  .tag-open { background: rgba(45,212,160,0.12); color: var(--green); }
+  .tag-closed { background: rgba(240,74,90,0.12); color: var(--red); }
 
-  /* Results table */
   .res-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .res-table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 8px; border-bottom: 1px solid var(--border); }
+  .res-table th { text-align: left; color: var(--text3); font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 8px; border-bottom: 1px solid var(--border); }
   .res-table td { padding: 8px; border-bottom: 1px solid var(--border); }
 
-  .empty-state { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+  .empty-state { text-align: center; padding: 32px; color: var(--text2); font-size: 13px; }
 
-  /* Toggle */
-  .mode-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; border: 1px solid var(--border); }
+  .mode-toggle { display: flex; background: var(--surface2); border-radius: 6px; padding: 3px; }
   .mode-toggle button {
-    flex: 1; padding: 6px 14px; font-size: 12px; font-weight: 500; border: none; cursor: pointer;
-    background: transparent; color: var(--muted); border-radius: 6px; transition: all 0.15s;
+    flex: 1; padding: 5px 12px; font-size: 12px; font-weight: 500; border: none; cursor: pointer;
+    background: transparent; color: var(--text2); border-radius: 4px; transition: all 0.15s;
   }
   .mode-toggle button.active { background: var(--accent); color: white; }
   .schedule-row { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
   .schedule-row.show { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-  /* Config preview */
   .cfg-preview {
-    background: #070714; border: 1px solid var(--border); border-radius: 6px;
-    padding: 10px; font-family: monospace; font-size: 11px;
-    max-height: 150px; overflow: auto; margin-top: 8px; white-space: pre; line-height: 1.4; display: none;
+    background: #08080c; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px; font-family: 'SF Mono', monospace; font-size: 11px;
+    max-height: 150px; overflow: auto; margin-top: 8px; white-space: pre; line-height: 1.5; display: none;
   }
 
-  /* Countdown */
   .countdown-bar {
-    display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap;
+    display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 12px 16px; margin-bottom: 16px; font-size: 13px;
+    padding: 12px 14px; margin-bottom: 16px; font-size: 13px;
   }
   .countdown-item {
-    flex: 1; min-width: 160px; background: var(--surface2); border-radius: 8px;
-    padding: 8px 12px; border-left: 3px solid var(--accent);
+    flex: 1; min-width: 180px;
+    padding: 10px 14px; border-left: 3px solid var(--accent);
   }
-  .countdown-item .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .countdown-item .exam { font-size: 13px; font-weight: 600; color: #fff; margin: 2px 0; }
-  .countdown-item .time { color: var(--accent2); font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .countdown-item .label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .countdown-item .exam { font-size: 13px; font-weight: 600; color: var(--text); margin: 2px 0; }
+  .countdown-item .time { color: var(--accent); font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums; }
   .countdown-item .time.urgent { color: var(--yellow); }
   .countdown-item .time.critical { color: var(--red); animation: pulse 1s infinite; }
-  .countdown-item .city { font-size: 10px; color: var(--muted); }
-  .countdown-empty { color: var(--muted); font-size: 12px; padding: 4px 0; }
+  .countdown-item .city { font-size: 11px; color: var(--text2); }
 
-  /* Login overlay */
   .login-overlay {
-    position: fixed; inset: 0; z-index: 9999;
-    background: var(--bg); display: flex; align-items: center; justify-content: center;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000;
   }
   .login-overlay.hidden { display: none; }
   .login-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 40px; width: 380px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 28px 32px; width: 360px;
   }
-  .login-card .logo-icon {
-    width: 56px; height: 56px; border-radius: 14px; font-size: 28px;
-    margin: 0 auto 12px;
-  }
-  .login-card h2 { text-align: center; font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-  .login-card p { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-  .login-card input {
-    width: 100%; padding: 10px 14px; margin-bottom: 12px; font-size: 14px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    color: var(--text); outline: none; box-sizing: border-box;
-  }
+  .login-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .login-card .sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .login-card .form-group { margin-bottom: 14px; }
+  .login-card label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+  .login-card input { width: 100%; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; }
   .login-card input:focus { border-color: var(--accent); }
-  .login-card .btn { width: 100%; justify-content: center; padding: 11px; font-size: 14px; margin-bottom: 12px; }
-  .login-error { color: var(--red); font-size: 12px; text-align: center; margin-bottom: 8px; min-height: 18px; }
-  .forgot-link { text-align: center; font-size: 12px; color: var(--muted); cursor: pointer; }
-  .forgot-link:hover { color: var(--accent2); }
+  .login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+  .login-error { font-size: 12px; color: var(--red); margin-bottom: 10px; display: none; }
+  .forgot-link { display: block; text-align: center; font-size: 12px; color: var(--text3); margin-top: 12px; cursor: pointer; }
+  .forgot-link:hover { color: var(--accent); }
 
-  /* Footer */
-  .footer { text-align: center; color: var(--muted); font-size: 11px; padding: 20px 0 10px; border-top: 1px solid var(--border); margin-top: 24px; }
+  .splash { display: flex; align-items: center; justify-content: center; min-height: 60vh; flex-direction: column; gap: 12px; color: var(--text2); font-size: 14px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  .td-actions { display: flex; gap: 4px; }
+  .td-actions .btn { padding: 3px 10px; font-size: 11px; }
+
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+    padding: 20px 10px; display: flex; flex-direction: column; gap: 20px;
+    flex-shrink: 0;
+  }
+  .sidebar-logo { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
+  .sidebar-logo-mark {
+    width: 28px; height: 28px; background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; font-weight: 600; flex-shrink: 0;
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text3); padding: 0 10px; margin-bottom: 4px;
+  }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-nav a {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    border-radius: 6px; font-size: 13px; font-weight: 500;
+    color: var(--text2); text-decoration: none; transition: all 0.15s;
+  }
+  .sidebar-nav a:hover { background: var(--surface2); color: var(--text); }
+  .sidebar-nav a.active { background: var(--surface2); color: var(--text); }
+  .sidebar-nav a svg { width: 16px; height: 16px; opacity: 0.6; flex-shrink: 0; }
+
+  .main { flex: 1; padding: 28px 32px; overflow-y: auto; min-width: 0; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+  .topbar-left h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+  .topbar-left p { font-size: 13px; color: var(--text2); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .section-title {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text3);
+  }
+
+  .actions-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 14px; margin-bottom: 4px;
+  }
+
+  .conn-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 12px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .conn-bar input {
+    flex: 1; min-width: 200px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; color: var(--text); font-size: 13px; outline: none;
+  }
+  .conn-bar input:focus { border-color: var(--accent); }
+  .conn-bar .status-text { font-size: 12px; color: var(--text2); }
+  .conn-bar .status-text.ok { color: var(--green); }
+  .conn-bar .status-text.err { color: var(--red); }
+
+  @media (max-width:768px) {
+    .sidebar { display: none; }
+    .main { padding: 16px; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <div class="logo">
-      <div class="logo-icon">G</div>
+<div class="app">
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">G</div>
       <div>
-        <h1>Goethe Bot <span>v2.0</span></h1>
+        <div style="font-size:14px;font-weight:600;">Goethe Bot</div>
+        <div style="font-size:10px;color:var(--text3);">v2.0</div>
       </div>
     </div>
-    <div id="statusBadge" class="badge">
-      <span id="statusDot" class="dot dot-disconnected"></span>
-      <span id="statusText">Disconnected</span>
+    <div>
+      <div class="sidebar-section-label">Main</div>
+      <div class="sidebar-nav">
+        <a href="#" class="active" onclick="showSection('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
+        <a href="#" onclick="showSection('settings')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Settings
+        </a>
+      </div>
     </div>
-  </header>
-
-  <!-- Login overlay -->
-  <div id="loginOverlay" class="login-overlay">
-    <div class="login-card">
-      <div class="logo-icon" style="display:flex;align-items:center;justify-content:center;">G</div>
-      <h2>Goethe Bot</h2>
-      <p>Sign in to access the dashboard</p>
-      <input type="text" id="loginBackendUrl" placeholder="Backend URL (e.g. https://railway...)" style="margin-bottom:8px;font-size:12px;">
-      <input type="email" id="loginEmail" placeholder="Email" autocomplete="email">
-      <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-      <div id="loginError" class="login-error"></div>
-      <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
-      <div class="forgot-link" onclick="doForgotPassword()">Forgot password?</div>
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
+      <div class="sidebar-nav">
+        <a href="#" onclick="doLogout()" style="color:var(--text3);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign out
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- Connection -->
-  <div class="conn-bar">
-    <span style="font-size:13px;color:var(--muted);">🔗</span>
-    <input type="text" id="backendUrl" placeholder="http://localhost:5000">
-    <button class="btn btn-outline btn-sm" onclick="connectBackend()">Connect</button>
-    <span id="backendStatus" class="status-text">Not connected</span>
-  </div>
-
-  <!-- Countdown -->
-  <div id="countdownBar" class="countdown-bar" style="display:none;"></div>
-
-  <!-- Row 1: Controls -->
-  <div class="grid grid-2">
-    <!-- Config -->
-    <div class="card">
-      <div class="card-hd"><h3><span class="ico">⚙️</span> Configuration</h3></div>
-      <div class="input-group" style="margin-bottom:8px;">
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('csvFile').click()">📂 Upload CSV</button>
-        <input type="file" id="csvFile" accept=".csv" onchange="uploadConfig(event)">
-        <button class="btn btn-outline btn-sm" onclick="loadConfigFromBackend()">📥 From Server</button>
-        <button class="btn btn-outline btn-sm" onclick="toggleConfigPreview()">👁 Preview</button>
+  <div class="main" id="mainArea">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="pageTitle">Dashboard</h2>
+        <p id="pageSubtitle">Manage your exam bookings</p>
       </div>
-      <div id="configInfo" style="font-size:12px;color:var(--muted);"></div>
-      <div id="configPreview" class="cfg-preview"></div>
+      <div class="topbar-right">
+        <div id="statusBadge" class="status-badge">
+          <span id="statusDot" class="dot dot-disconnected"></span>
+          <span id="statusText">Disconnected</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Actions + Schedule -->
-    <div class="card">
-      <div class="card-hd"><h3><span class="ico">🎯</span> Actions</h3></div>
-      <div class="btn-group" style="margin-bottom:8px;">
-        <button id="btnStart" class="btn btn-success" onclick="startBot()">▶ Start Bot</button>
-        <button id="btnStop" class="btn btn-danger" disabled onclick="stopBot()">■ Stop</button>
-        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
+    <div id="loginOverlay" class="login-overlay">
+      <div class="login-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <div class="sidebar-logo-mark" style="width:28px;height:28px;font-size:12px;border-radius:6px;">G</div>
+          <span style="font-size:15px;font-weight:600;">Goethe Bot</span>
+        </div>
+        <h2>Sign in</h2>
+        <p class="sub">Access the booking dashboard.</p>
+        <input type="text" id="loginBackendUrl" placeholder="Backend URL (ex: https://railway...)" style="margin-bottom:10px;font-size:12px;">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPass" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div id="loginError" class="login-error"></div>
+        <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+        <div class="forgot-link" onclick="doForgotPassword()">Forgot password?</div>
+      </div>
+    </div>
+
+    <div id="sectionDashboard">
+      <div class="conn-bar">
+        <input type="text" id="backendUrl" placeholder="Backend URL">
+        <button class="btn btn-outline btn-sm" onclick="connectBackend()">Connect</button>
+        <span id="backendStatus" class="status-text">Not connected</span>
+      </div>
+
+      <div id="countdownBar" class="countdown-bar" style="display:none;"></div>
+
+      <div class="section-title" style="margin-bottom:10px;">Controls</div>
+      <div class="actions-bar">
+        <button id="btnStart" class="btn btn-primary" onclick="startBot()">Start Bot</button>
+        <button id="btnStop" class="btn btn-danger" disabled onclick="stopBot()">Stop</button>
+        <div class="mode-toggle">
+          <button id="modeNow" class="active" onclick="setMode('now')">Run Now</button>
+          <button id="modeLater" onclick="setMode('later')">Schedule</button>
+        </div>
+        <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:4px;">
           <input type="checkbox" id="headlessMode" style="accent-color:var(--accent);"> Headless
         </label>
       </div>
-      <div class="mode-toggle">
-        <button id="modeNow" class="active" onclick="setMode('now')">▶ Run Now</button>
-        <button id="modeLater" onclick="setMode('later')">⏰ Schedule</button>
+      <div id="scheduleRow" class="schedule-row show">
+        <input type="datetime-local" id="scheduleDt" style="flex:1;max-width:240px;">
+        <button class="btn btn-outline btn-sm" onclick="scheduleStart()">Set schedule</button>
+        <button class="btn btn-outline btn-sm" onclick="cancelSchedule()">Cancel</button>
+        <span id="scheduleStatus" style="font-size:11px;color:var(--text2);"></span>
       </div>
-      <div id="scheduleRow" class="schedule-row">
-        <input type="datetime-local" id="scheduleDt" style="flex:1;">
-        <button class="btn btn-outline btn-sm" onclick="scheduleStart()">Set</button>
-        <button class="btn btn-outline btn-sm" onclick="cancelSchedule()">✕</button>
-        <span id="scheduleStatus" style="font-size:11px;color:var(--muted);"></span>
-      </div>
-    </div>
-  </div>
 
-  <!-- Row 2: Notifications + History -->
-  <div class="grid grid-2" style="margin-top:4px;">
-    <div class="card">
-      <div class="card-hd"><h3><span class="ico">📬</span> Notifications</h3></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
-        <span style="color:var(--muted);">Telegram Token</span>
-        <input type="text" id="tgToken" placeholder="Bot token">
-        <span style="color:var(--muted);">Telegram Chat ID</span>
-        <input type="text" id="tgChatId" placeholder="Chat ID">
-        <span style="color:var(--muted);">Email To</span>
-        <input type="text" id="emailTo" placeholder="email@example.com">
-        <span style="color:var(--muted);">WhatsApp To</span>
-        <input type="text" id="waTo" placeholder="Phone number">
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-hd"><h3><span class="ico">📊</span> History</h3></div>
-      <div id="resultsCard" style="display:none;">
-        <table class="res-table">
-          <thead><tr><th>Student</th><th>Status</th><th>Reference</th></tr></thead>
-          <tbody id="resultsBody"></tbody>
-        </table>
-      </div>
-      <div id="resultsEmpty" class="empty-state">No results yet</div>
-    </div>
-  </div>
-
-  <!-- Row 3: Students + Logs -->
-  <div class="grid grid-2" style="margin-top:4px;">
-    <div class="card">
-      <div class="card-hd"><h3><span class="ico">👥</span> Students</h3></div>
+      <div class="section-title" style="margin:20px 0 10px;">Students</div>
       <div id="studentGrid" class="student-grid">
         <div class="empty-state">Connect to backend and load config</div>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-hd">
-        <h3><span class="ico">📋</span> Live Log</h3>
-        <button class="btn btn-outline btn-sm" onclick="clearLog()">Clear</button>
+
+      <div class="section-title" style="margin:20px 0 10px;">Activity Log</div>
+      <div class="log-box" id="logBox"></div>
+
+      <div class="section-title" style="margin:20px 0 10px;">Exam Schedule 2026</div>
+      <div class="card">
+        <div id="scheduleBody" style="font-size:12px;color:var(--text2);padding:8px 0;">Connect to view schedule</div>
       </div>
-      <div id="logBox" class="log-box"></div>
     </div>
-  </div>
 
-  <!-- Exam Schedule -->
-  <div class="card" style="margin-top:4px;">
-    <div class="card-hd">
-      <h3><span class="ico">📅</span> Exam Schedule 2026</h3>
-      <button class="btn btn-outline btn-sm" onclick="loadSchedule()">🔄</button>
+    <div id="sectionSettings" style="display:none;">
+      <div class="section-title">Configuration</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="input-group" style="margin-bottom:8px;">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('csvFile').click()">Upload CSV</button>
+          <input type="file" id="csvFile" accept=".csv" onchange="uploadConfig(event)">
+          <button class="btn btn-outline btn-sm" onclick="loadConfigFromBackend()">From Server</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleConfigPreview()">Preview</button>
+        </div>
+        <div id="configInfo" style="font-size:12px;color:var(--text2);"></div>
+        <div id="configPreview" class="cfg-preview"></div>
+      </div>
+
+      <div class="section-title">Notifications</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+          <span style="color:var(--text2);">Telegram Token</span>
+          <input type="text" id="tgToken" placeholder="Bot token">
+          <span style="color:var(--text2);">Telegram Chat ID</span>
+          <input type="text" id="tgChatId" placeholder="Chat ID">
+          <span style="color:var(--text2);">Email To</span>
+          <input type="text" id="emailTo" placeholder="email@example.com">
+          <span style="color:var(--text2);">WhatsApp To</span>
+          <input type="text" id="waTo" placeholder="Phone number">
+        </div>
+      </div>
+
+      <div class="section-title">History</div>
+      <div class="card">
+        <div id="resultsCard" style="display:none;">
+          <table class="res-table">
+            <thead><tr><th>Student</th><th>Status</th><th>Reference</th></tr></thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+        <div id="resultsEmpty" class="empty-state">No results yet</div>
+      </div>
     </div>
-    <div id="scheduleBody" style="font-size:12px;color:var(--muted);padding:8px 0;">Connect to view schedule</div>
-  </div>
 
-  <div class="footer">Goethe Booking Bot v2.0 — Personal Use Only</div>
+  </div>
 </div>
 
 <script>
@@ -401,6 +460,23 @@ let evtSource = null;
 let statusPollTimer = null;
 let connected = false;
 let authToken = localStorage.getItem("auth_token") || "";
+
+function showSection(name) {
+  document.querySelectorAll(".sidebar-nav a").forEach(a => a.classList.remove("active"));
+  const links = document.querySelectorAll(".sidebar-nav a");
+  if (links[0]) links[0].classList.toggle("active", name === "dashboard");
+  if (links[1]) links[1].classList.toggle("active", name === "settings");
+  document.getElementById("sectionDashboard").style.display = name === "dashboard" ? "" : "none";
+  document.getElementById("sectionSettings").style.display = name === "settings" ? "" : "none";
+  document.getElementById("pageTitle").textContent = name === "dashboard" ? "Dashboard" : "Settings";
+  document.getElementById("pageSubtitle").textContent = name === "dashboard" ? "Manage your exam bookings" : "Configure students and notifications";
+}
+
+function doLogout() {
+  authToken = "";
+  localStorage.removeItem("auth_token");
+  document.getElementById("loginOverlay").classList.remove("hidden");
+}
 
 // ── Auth helpers ──
 function apiFetch(url, opts = {}) {
@@ -479,7 +555,7 @@ async function connectBackend() {
     const resp = await apiFetch(`${BASE}/api/status`, { signal: AbortSignal.timeout(5000) });
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     connected = true;
-    statusEl.textContent = "✅ Connected";
+    statusEl.textContent = "Connected";
     statusEl.className = "status-text ok";
     updateBadge(false);
     await loadConfigFromBackend();
@@ -488,7 +564,7 @@ async function connectBackend() {
     startStatusPoll();
   } catch (e) {
     connected = false;
-    statusEl.textContent = "❌ Cannot connect";
+    statusEl.textContent = "Cannot connect";
     statusEl.className = "status-text err";
     document.getElementById("statusBadge").innerHTML = '<span class="dot dot-disconnected"></span> Disconnected';
   }
@@ -534,23 +610,35 @@ const STEPS = ["Poll", "Book", "Continue", "Myself", "Login", "Form", "Confirm"]
 function updateStudentUI(students) {
   const grid = document.getElementById("studentGrid");
   grid.innerHTML = students.map(s => {
+    const level = s.level || s.exam_level || "?";
     const pct = s.status === "Confirmed!" || s.status === "Submitted" ? 100 :
                 s.status === "Failed" || s.status === "Stopped" ? 0 :
                 s.status === "Not started" ? 0 : 45;
-    return `<div class="scard border-${s.color}">
+    const done = s.status === "Confirmed!" || s.status === "Submitted";
+    const failed = s.status === "Failed" || s.status === "Stopped";
+    const runClass = done ? "done" : failed ? "fail" : s.status === "Not started" ? "" : "active";
+    return `<div class="scard">
       <div class="scard-top">
-        <div><div class="scard-name">${escHtml(s.name)}</div></div>
-        <span class="step ${s.status === 'Confirmed!' || s.status === 'Submitted' ? 'done' : s.status === 'Failed' || s.status === 'Stopped' ? 'fail' : s.status === 'Not started' ? '' : 'active'}">${escHtml(s.status)}</span>
+        <div>
+          <div class="scard-name">${escHtml(s.name)}</div>
+          <div class="scard-meta">${escHtml(s.city)}</div>
+        </div>
+        <span class="exam-tag exam-${level}">${escHtml(level)}</span>
       </div>
-      <div class="scard-meta">${escHtml(s.level)} | ${escHtml(s.city)} | ${escHtml(s.booking_time)}</div>
-      <div class="scard-status" style="color:${getColor(s.color)};">
-        <span class="status-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${getColor(s.color)};"></span>
-        <span>${escHtml(s.status)}</span>
-        ${s.details ? `<span class="scard-detail">— ${escHtml(s.details)}</span>` : ''}
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+        <div class="detail-row" style="display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--text3);">Time</span>
+          <span style="color:var(--text);font-weight:500;">${escHtml(s.booking_time || '—')}</span>
+        </div>
+        <div class="detail-row" style="display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--text3);">Status</span>
+          <span class="step ${runClass}">${escHtml(s.status)}</span>
+        </div>
+        ${s.details ? `<div class="detail-row" style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text3);">Details</span><span style="color:var(--text2);">${escHtml(s.details)}</span></div>` : ''}
       </div>
       <div class="progress-wrap">
         <div class="progress-bar">
-          <div class="progress-fill ${s.status === 'Confirmed!' || s.status === 'Submitted' ? 'done' : s.status === 'Failed' || s.status === 'Stopped' ? 'fail' : ''}" style="width:${pct}%"></div>
+          <div class="progress-fill ${done ? 'done' : failed ? 'fail' : ''}" style="width:${pct}%"></div>
         </div>
       </div>
     </div>`;
@@ -558,7 +646,7 @@ function updateStudentUI(students) {
 }
 
 function getColor(c) {
-  return {warning:"#ffc107", success:"#00c853", danger:"#ff1744", info:"#448aff", secondary:"#6c6c8a"}[c] || "#6c6c8a";
+  return {warning:"#f5a623", success:"#2dd4a0", danger:"#f04a5a", info:"#448aff", secondary:"#5c5c6e"}[c] || "#5c5c6e";
 }
 
 // ── Config ──
@@ -568,7 +656,7 @@ async function loadConfigFromBackend() {
     const resp = await apiFetch(`${BASE}/api/config`, { signal: AbortSignal.timeout(5000) });
     const data = await resp.json();
     if (data.students && data.students.length > 0) {
-      document.getElementById("configInfo").textContent = `✅ ${data.count} student(s) loaded`;
+      document.getElementById("configInfo").textContent = `${data.count} student(s) loaded`;
       updateStudentUI(data.students.map(s => ({
         name: s.name, level: s.level || s.exam_level, city: s.city,
         booking_time: s.booking_datetime, status: "Not started",
@@ -579,10 +667,10 @@ async function loadConfigFromBackend() {
         "name,email,password,level,city,booking_datetime,...\n" +
         data.students.map(s => `${s.name},${s.email},${s.password},${s.level||s.exam_level||''},${s.city},${s.booking_datetime}`).join("\n");
     } else {
-      document.getElementById("configInfo").textContent = "⚠ No students on server. Upload a config.csv";
+      document.getElementById("configInfo").textContent = "No students on server. Upload a config.csv";
       document.getElementById("studentGrid").innerHTML = '<div class="empty-state">No students loaded</div>';
     }
-  } catch { document.getElementById("configInfo").textContent = "❌ Failed to load config"; }
+  } catch { document.getElementById("configInfo").textContent = "Failed to load config"; }
 }
 
 async function uploadConfig(event) {
@@ -597,14 +685,14 @@ async function uploadConfig(event) {
       });
       const data = await resp.json();
       if (data.ok) {
-        document.getElementById("configInfo").textContent = `✅ ${data.count} student(s) uploaded`;
+        document.getElementById("configInfo").textContent = `${data.count} student(s) uploaded`;
         document.getElementById("configPreview").textContent = e.target.result;
         await loadConfigFromBackend();
       } else {
-        document.getElementById("configInfo").textContent = "❌ " + (data.error || "Upload failed");
+        document.getElementById("configInfo").textContent = (data.error || "Upload failed");
       }
     } catch (err) {
-      document.getElementById("configInfo").textContent = "❌ Upload error";
+      document.getElementById("configInfo").textContent = "Upload error";
     }
   };
   reader.readAsText(file);
@@ -630,7 +718,7 @@ async function startBot() {
         body: JSON.stringify({datetime: dt + ":00"}), signal: AbortSignal.timeout(5000),
       });
       const data = await resp.json();
-      document.getElementById("scheduleStatus").textContent = data.ok ? "✅ Scheduled for " + dt : "❌ " + data.error;
+      document.getElementById("scheduleStatus").textContent = data.ok ? "Scheduled for " + dt : data.error || "Failed";
     } catch(e) { alert("Schedule failed"); }
     return;
   }
@@ -688,14 +776,14 @@ async function scheduleStart() {
       body: JSON.stringify({datetime: dt + ":00"}), signal: AbortSignal.timeout(5000),
     });
     const data = await resp.json();
-    document.getElementById("scheduleStatus").textContent = data.ok ? "✅ Scheduled for " + dt : "❌ " + data.error;
+    document.getElementById("scheduleStatus").textContent = data.ok ? "Scheduled for " + dt : data.error || "Failed";
   } catch(e) { alert("Schedule failed"); }
 }
 
 async function cancelSchedule() {
   try {
     await apiFetch(`${BASE}/api/schedule-cancel`, { method: "POST", signal: AbortSignal.timeout(5000) });
-    document.getElementById("scheduleStatus").textContent = "⛔ Cancelled";
+    document.getElementById("scheduleStatus").textContent = "Cancelled";
   } catch { /* ignore */ }
 }
 
@@ -704,7 +792,7 @@ async function loadScheduleStatus() {
     const resp = await apiFetch(`${BASE}/api/schedule-status`, { signal: AbortSignal.timeout(5000) });
     const data = await resp.json();
     if (data.scheduled) {
-      document.getElementById("scheduleStatus").textContent = "⏳ Scheduled for " + data.datetime;
+      document.getElementById("scheduleStatus").textContent = "Scheduled for " + data.datetime;
       setMode("later");
     }
   } catch { /* ignore */ }
@@ -745,8 +833,7 @@ async function loadResults() {
     document.getElementById("resultsCard").style.display = "";
     document.getElementById("resultsEmpty").style.display = "none";
     document.getElementById("resultsBody").innerHTML = results.map(r => {
-      const em = r.status === "confirmed" ? "✅" : r.status === "submitted" ? "✅" : r.status === "stopped" ? "⛔" : "❌";
-      return `<tr><td>${escHtml(r.name)}</td><td>${em} ${r.status}</td><td>${escHtml(r.reference||'')}</td></tr>`;
+      return `<tr><td>${escHtml(r.name)}</td><td>${escHtml(r.status)}</td><td>${escHtml(r.reference||'')}</td></tr>`;
     }).join("");
   } catch { /* ignore */ }
 }
@@ -800,7 +887,7 @@ let countdownTimer = null;
 let countdownTargets = [];
 
 function fmtCountdown(ms) {
-  if (ms <= 0) return "🔴 Now!";
+  if (ms <= 0) return "Now";
   const days = Math.floor(ms / 86400000);
   const hours = Math.floor((ms % 86400000) / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
@@ -822,7 +909,7 @@ function updateCountdown() {
   const allPast = countdownTargets.every(t => t.time <= now);
   if (allPast) {
     bar.innerHTML = countdownTargets.map(t =>
-      `<div class="countdown-item" style="border-left-color:var(--green)"><div class="label">${t.exam}</div><div class="exam">${escHtml(t.name)}</div><div class="time critical">🔴 Slot passed</div><div class="city">${escHtml(t.city)}</div></div>`
+      `<div class="countdown-item" style="border-left-color:var(--green)"><div class="label">${t.exam}</div><div class="exam">${escHtml(t.name)}</div><div class="time critical">Slot passed</div><div class="city">${escHtml(t.city)}</div></div>`
     ).join("");
     return;
   }
