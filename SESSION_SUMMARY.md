@@ -170,6 +170,7 @@ git add -A; git commit -m "message"; git push origin main
 - Countdown fix: all 3 students (A1, A2, B1) now show their own countdown cards (was only showing nearest)
 - New Netlify domain (old one flagged by Google Safe Browsing): **https://goethe-booking-dashboard.netlify.app**
 - Default Railway URL changed from `localhost:5000` → `https://goethe-booking-bot-production.up.railway.app`
-- GitHub Actions secrets set: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, `RAILWAY_API_TOKEN` — auto-deploy fixed
-- Commits: `9b856c8` (countdown fix), `40cd763` (summary update), `cf488b4` (correct Railway URL)
+- GitHub Actions secrets set: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, `RAILWAY_API_TOKEN`
+- Railway deploy fix: added `railway link <project-id>` step to workflow (was failing with "No linked project found")
+- Commits: `9b856c8` (countdown), `40cd763` (summary), `cf488b4` (Railway URL), `6d0efc9` (Railway link fix)
 ```
