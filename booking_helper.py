@@ -41,6 +41,7 @@ from selector_fallbacks import (
     wait_for_any_selector,
 )
 from proxy_rotator import ProxyRotator
+from confirmation_parser import parse_confirmation_text, parse_confirmation_url, summarize as summarize_confirmation
 from selenium.common.exceptions import (
     NoSuchElementException,
     NoSuchWindowException,
@@ -877,23 +878,25 @@ def capture_confirmation(driver: webdriver.Chrome, student_name: str, logger: lo
 
     try:
         body = driver.find_element(By.TAG_NAME, "body").text
-        ref_patterns = [
-            r"(?:booking|reference|confirmation|registration)\s*(?:number|no|id|code|ref)?\s*[:#]?\s*([A-Z0-9\-]{6,30})",
-            r"(?:PTN|Buchungs|Referenz)\s*(?:nummer)?\s*[:#]?\s*([A-Z0-9\-]{6,30})",
-        ]
-        for pattern in ref_patterns:
-            match = re.search(pattern, body, re.IGNORECASE)
-            if match:
-                result["reference"] = match.group(1).strip()
-                logger.info("Booking reference found: %s", result["reference"])
-                break
+        parsed = parse_confirmation_text(body)
+        url_info = parse_confirmation_url(driver.current_url)
 
-        if "thank you" in body.lower() or "confirmation" in body.lower() or "successful" in body.lower():
-            result["status"] = "confirmed"
-        elif "error" in body.lower() or "failed" in body.lower():
-            result["status"] = "error"
-        else:
-            result["status"] = "submitted"
+        if parsed["reference"]:
+            result["reference"] = parsed["reference"]
+            logger.info("Booking reference found: %s", result["reference"])
+        if parsed["exam_date"]:
+            result["exam_date"] = parsed["exam_date"]
+        if parsed["exam_time"]:
+            result["exam_time"] = parsed["exam_time"]
+        if parsed["exam_level"]:
+            result["exam_level"] = parsed["exam_level"]
+        if parsed["exam_city"]:
+            result["exam_city"] = parsed["exam_city"]
+        if url_info.get("booking_reference_url"):
+            result["url_reference"] = url_info["booking_reference_url"]
+
+        result["status"] = parsed.get("status", "unknown")
+        logger.info("Confirmation parsed: %s", summarize_confirmation(parsed))
     except Exception as exc:
         logger.warning("Error reading confirmation page: %s", exc)
 
