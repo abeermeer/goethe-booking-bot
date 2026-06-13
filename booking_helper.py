@@ -40,6 +40,7 @@ from selector_fallbacks import (
     find_elements_fallback,
     wait_for_any_selector,
 )
+from proxy_rotator import ProxyRotator
 from selenium.common.exceptions import (
     NoSuchElementException,
     NoSuchWindowException,
@@ -110,8 +111,9 @@ BURST_POST_POLL_MIN = 2.0
 BURST_POST_POLL_MAX = 3.0
 BURST_CRASH_RETRY = 1.5
 
-# ── Proxy list (for rotation) ──
+# ── Proxy rotation ──
 PROXY_LIST = [p.strip() for p in os.environ.get("PROXY_LIST", "").split(",") if p.strip()]
+PROXY_ROTATOR = ProxyRotator(logger=logging.getLogger("proxy_rotator"))
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -921,11 +923,12 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if not scheduled_wait(booking_time_str, logger, stop_event):
             return {"name": name, "email": email, "level": level, "city": city, "status": "stopped"}
 
-    # Pick a proxy for this student (rotation)
+    # Pick a proxy for this student (rotation via ProxyRotator)
     assigned_proxy = proxy
-    if not assigned_proxy and PROXY_LIST:
-        assigned_proxy = random.choice(PROXY_LIST)
-        logger.info("Assigned proxy: %s", assigned_proxy)
+    if not assigned_proxy:
+        assigned_proxy = PROXY_ROTATOR.get()
+        if assigned_proxy:
+            logger.info("Assigned proxy: %s", assigned_proxy)
 
     logger.info("=" * 60)
     logger.info("STARTING STUDENT: %s | %s | %s | %s", name, email, level, city)
@@ -1117,6 +1120,9 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         result["status"] = conf.get("status", "submitted")
         db.clear_checkpoint(student_key)
 
+        if assigned_proxy:
+            PROXY_ROTATOR.mark_success(assigned_proxy)
+
         notifications.notify_all(f"Booking complete: {name}", f"{level} | {city} | Status: {result['status']}", logger)
 
     except KeyboardInterrupt:
@@ -1124,6 +1130,8 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         result["status"] = "interrupted"
     except Exception as exc:
         logger.exception("Flow error for %s: %s", name, exc)
+        if assigned_proxy:
+            PROXY_ROTATOR.mark_failed(assigned_proxy)
         notify(f"❌ Booking failed: {name}", str(exc), logger)
         if driver:
             try:
