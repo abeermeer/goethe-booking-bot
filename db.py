@@ -6,9 +6,10 @@ Stores students, results, logs persistently.
 from __future__ import annotations
 
 import json
+import secrets
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -49,6 +50,12 @@ def init_db():
         CREATE TABLE IF NOT EXISTS bot_state (
             key TEXT PRIMARY KEY,
             value TEXT
+        );
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            expires_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS queue_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,6 +199,41 @@ def delete_queue_item(item_id: int):
 def clear_queue():
     conn = _get_conn()
     conn.execute("DELETE FROM queue_history")
+    conn.commit()
+
+
+def create_session(email: str, expiry_hours: int = 24) -> str:
+    conn = _get_conn()
+    conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
+    session_id = secrets.token_urlsafe(48)
+    conn.execute(
+        "INSERT INTO sessions (session_id, email, expires_at) VALUES (?, ?, datetime('now', '+{} hours'))".format(expiry_hours),
+        (session_id, email),
+    )
+    conn.commit()
+    return session_id
+
+
+def validate_session(session_id: str) -> Optional[str]:
+    conn = _get_conn()
+    conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
+    conn.commit()
+    row = conn.execute(
+        "SELECT email FROM sessions WHERE session_id = ? AND expires_at >= datetime('now')",
+        (session_id,),
+    ).fetchone()
+    return row["email"] if row else None
+
+
+def delete_session(session_id: str):
+    conn = _get_conn()
+    conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+    conn.commit()
+
+
+def clean_expired_sessions():
+    conn = _get_conn()
+    conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
     conn.commit()
 
 

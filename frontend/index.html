@@ -539,6 +539,7 @@
         <input type="text" id="backendUrl" placeholder="Backend URL">
         <button class="btn btn-outline btn-sm" onclick="connectBackend()">Connect</button>
         <span id="backendStatus" class="status-text">Not connected</span>
+        <button class="btn btn-outline btn-sm" onclick="doLogout()" style="color:var(--red);border-color:rgba(240,74,90,0.3);">Logout</button>
       </div>
 
       <div id="countdownBar" class="countdown-bar" style="display:none;"></div>
@@ -676,7 +677,7 @@
 
 <script>
 // ── State ──
-let BASE = localStorage.getItem("backend_url") || "https://goethe-booking-bot-production-a6a6.up.railway.app";
+let BASE = localStorage.getItem("backend_url") || "";
 let running = false;
 let evtSource = null;
 let statusPollTimer = null;
@@ -698,7 +699,10 @@ function toggleMobileNav() {
   document.getElementById("mobileNav").classList.toggle("open");
 }
 
-function doLogout() {
+async function doLogout() {
+  try {
+    await apiFetch(`${BASE}/api/logout`, {method: "POST", signal: AbortSignal.timeout(5000)});
+  } catch {}
   authToken = "";
   localStorage.removeItem("auth_token");
   document.getElementById("loginOverlay").classList.remove("hidden");
@@ -891,8 +895,8 @@ async function loadConfigFromBackend() {
       })));
       startCountdown(data.students);
       document.getElementById("configPreview").textContent =
-        "name,email,password,level,city,booking_datetime,...\n" +
-        data.students.map(s => `${s.name},${s.email},${s.password},${s.level||s.exam_level||''},${s.city},${s.booking_datetime}`).join("\n");
+        "name,email,level,city,booking_datetime,...\n" +
+        data.students.map(s => `${s.name},${s.email},${s.level||s.exam_level||''},${s.city},${s.booking_datetime}`).join("\n");
     } else {
       document.getElementById("configInfo").textContent = "No students on server. Upload a config.csv";
       document.getElementById("studentGrid").innerHTML = '<div class="empty-state">No students loaded</div>';

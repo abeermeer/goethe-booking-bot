@@ -17,13 +17,11 @@ Frontend connects via Backend URL input.
 from __future__ import annotations
 
 import gc
-import hashlib
 import hmac
 import json
 import logging
 import os
 import queue
-import secrets
 import sys
 import threading
 import time
@@ -46,6 +44,15 @@ import student_queue as sqmod
 from deadman import DeadManSwitch
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
+
+
+@app.before_request
+def enforce_https():
+    if not flask.request.is_secure and os.environ.get("ENFORCE_HTTPS", "").lower() in ("1", "true", "yes"):
+        url = flask.request.url.replace("http://", "https://", 1)
+        return flask.redirect(url, 301)
+
 
 # ── Auth config ──
 AUTH_EMAIL = os.environ.get("AUTH_EMAIL", "admin@example.com")
@@ -56,16 +63,15 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROCESS_START_TIME = time.time()
 
 def _make_token(email: str) -> str:
-    raw = f"{email}:{AUTH_SALT}:{int(time.time() / 86400)}"
-    return hmac.new(AUTH_SALT.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    return db.create_session(email, expiry_hours=24)
 
 def _check_auth():
     auth = request.headers.get("Authorization", "")
     token = auth.removeprefix("Bearer ").strip()
     if not token:
         return False
-    expected = _make_token(AUTH_EMAIL)
-    return hmac.compare_digest(token, expected)
+    email = db.validate_session(token)
+    return email == AUTH_EMAIL if email else False
 
 # ── Global state ──
 bot_stop_event = threading.Event()
@@ -144,6 +150,10 @@ def setup_web_logger(name: str) -> logging.Logger:
     return logger
 
 
+def _strip_sensitive(students: List[Dict]) -> List[Dict]:
+    return [{k: v for k, v in s.items() if k != "password"} for s in students]
+
+
 def _student_key(s: Dict) -> str:
     return f"{s.get('name', '?')}|{s.get('level', s.get('exam_level', '?'))}|{s.get('city', '?')}"
 
@@ -216,6 +226,8 @@ def add_cors(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
     if flask.request.method == "OPTIONS":
         resp.status_code = 200
     return resp
@@ -246,8 +258,9 @@ def api_login():
     data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
-    if email == AUTH_EMAIL.lower() and password == AUTH_PASSWORD:
-        return jsonify({"ok": True, "token": _make_token(AUTH_EMAIL), "email": AUTH_EMAIL})
+    if hmac.compare_digest(email, AUTH_EMAIL.lower()) and hmac.compare_digest(password, AUTH_PASSWORD):
+        token = _make_token(AUTH_EMAIL)
+        return jsonify({"ok": True, "token": token, "email": AUTH_EMAIL})
     return jsonify({"ok": False, "error": "Invalid email or password"}), 401
 
 
@@ -269,6 +282,16 @@ def require_auth(f):
             return f(*args, **kwargs)
         return jsonify({"ok": False, "error": "Unauthorized"}), 401
     return decorated
+
+
+@app.route("/api/logout", methods=["POST"])
+@require_auth
+def api_logout():
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ").strip()
+    if token:
+        db.delete_session(token)
+    return jsonify({"ok": True})
 
 
 # ── Routes ──
@@ -313,10 +336,7 @@ def api_get_config():
     return jsonify({
         "path": config_path,
         "count": len(students),
-        "students": [
-            {k: v for k, v in s.items()}
-            for s in students
-        ],
+        "students": _strip_sensitive(students),
     })
 
 
@@ -345,11 +365,12 @@ def api_config_upload():
         return jsonify({"ok": False, "error": "Empty CSV data"}), 400
     try:
         import tempfile
-        tmp = Path(tempfile.mktemp(suffix=".csv"))
-        tmp.write_text(csv_content, encoding="utf-8")
-        students = bot.load_all_students(str(tmp))
-        config_path = str(tmp)
-        return jsonify({"ok": True, "count": len(students), "students": [{k: v for k, v in s.items()} for s in students]})
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8") as tmp:
+            tmp.write(csv_content)
+            tmp_path = tmp.name
+        students = bot.load_all_students(tmp_path)
+        config_path = tmp_path
+        return jsonify({"ok": True, "count": len(students), "students": _strip_sensitive(students)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
@@ -410,8 +431,8 @@ def api_logs():
     # SSE needs token via query param (EventSource doesn't support custom headers)
     query_token = request.args.get("token", "")
     if query_token:
-        expected = _make_token(AUTH_EMAIL)
-        if not hmac.compare_digest(query_token, expected):
+        email = db.validate_session(query_token)
+        if not email or email != AUTH_EMAIL:
             return jsonify({"ok": False, "error": "Unauthorized"}), 401
     elif not _check_auth():
         return jsonify({"ok": False, "error": "Unauthorized"}), 401
