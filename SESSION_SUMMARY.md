@@ -127,6 +127,32 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 - Presentation URL: `https://goethe-bot-presentation.netlify.app`
 - All API tokens, deploy tokens, and keys removed from this file — rotate before re-deploying
 
+## 14 Jun 2026 — Session 4: Invoice + Video Demo Generation
+
+### Invoice Delivered
+- Professional invoice `Goethe Booking Bot Invoice.docx` (38KB) created in Downloads
+- **6 line items:** Booking Engine (95k), Reliability Suite (50k), Admin Dashboard (55k), AI Assistant (22k), Quality + DevOps (28k), 2-Month Support (25k)
+- **Total: PKR 275,000** — no hours listed, no "25k per slot" argument
+- Clean black/gray professional layout — no color theme
+- **Scope cap included:** "Support covers existing functionality only. Site structure changes or new features billed separately."
+- Previous enterprise-themed version saved separately as `Goethe Booking Bot Invoice - Enterprise.docx`
+
+### Video Demo Capability Added
+- **FFmpeg 8.1.1** installed via winget (Gyan build, full)
+- **moviepy 2.2.1** installed — Python video composition library
+- **Demo video created:** `Goethe-Booking-Bot-Demo.mp4` (1.6MB, 23 sec, 1080p)
+- 6 slides with crossfade transitions: Title → 12 Modules → 66 Tests → Architecture → Package Includes → Outro
+- Full video pipeline ready for screen recordings, animated promos, overlays
+
+### Git Status (14 Jun)
+- **No changes pushed** — git is clean, no new commits this session
+- Last commit: `0e6f52b` (docs: update SESSION_SUMMARY.md)
+
+### Railway Status (14 Jun)
+- **Online** — `https://goethe-booking-bot-production-a6a6.up.railway.app`
+- Latest deployment: `c88369b4` — SUCCESS (13 Jun 23:43)
+- **No new deployments** this session — no code changes
+
 ## Current Config (3 students — all same account)
 | Name | Level | City | Booking DateTime |
 |------|-------|------|-----------------|
@@ -374,10 +400,22 @@ git add -A; git commit -m "message"; git push origin main
 | Metric | Value |
 |--------|-------|
 | Tests | 66 (54 old + 12 new) |
-| Commits | 78 on main |
+| Commits | 80 on main |
 | Modules | 12 (+ `circuit_breaker.py`) |
 | Auth | HMAC → DB-backed sessions with 24hr expiry |
 | Repository | **PRIVATE** — secrets scrubbed from history |
+| Invoice | `Goethe Booking Bot Invoice.docx` — PKR 275,000 |
+| Video Demo | `Goethe-Booking-Bot-Demo.mp4` — 23 sec, 1080p |
+| FFmpeg | 8.1.1 + moviepy 2.2.1 — video generation ready |
+
+### Commands — Session 4
+```powershell
+# Generate video demo (if editing slides)
+python Downloads\make_demo.py
+
+# Generate invoice
+python Downloads\generate_docx3.py
+```
 
 ### Client Handoff Procedure
 1. Client creates GitHub account
