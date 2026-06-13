@@ -43,6 +43,7 @@ import booking_helper as bot
 import db
 import alexa
 import student_queue as sqmod
+from deadman import DeadManSwitch
 
 app = Flask(__name__)
 
@@ -72,6 +73,8 @@ bot_thread: Optional[threading.Thread] = None
 bot_running = False
 log_queue: queue.Queue = queue.Queue()
 student_queue = sqmod.StudentQueue()
+deadman = DeadManSwitch()
+deadman.start_monitor(interval=120, on_death=lambda: deadman_alert())
 student_status: Dict[str, Dict] = {}  # name -> {status, color, details}
 student_results: List[Dict] = []
 config_path: str = ""
@@ -143,6 +146,12 @@ def setup_web_logger(name: str) -> logging.Logger:
 
 def _student_key(s: Dict) -> str:
     return f"{s.get('name', '?')}|{s.get('level', s.get('exam_level', '?'))}|{s.get('city', '?')}"
+
+
+def deadman_alert():
+    master_logger = setup_web_logger("deadman")
+    master_logger.critical("DEAD MAN SWITCH TRIGGERED — no heartbeat detected")
+    bot.notify("Dead Man Switch", "Bot heartbeat stopped. Process may be hung or crashed.", master_logger)
 
 def run_students_web(students: List[Dict], headless: bool, immediate: bool = False):
     global bot_stop_event, bot_running, student_status, student_results
@@ -424,6 +433,15 @@ def api_logs():
 def api_results():
     return jsonify(student_results)
 
+
+@app.route("/api/heartbeat")
+def api_heartbeat():
+    deadman.ping()
+    return jsonify({
+        "status": "ok",
+        "seconds_since_ping": deadman.seconds_since_ping,
+        "alive": deadman.is_alive,
+    })
 
 @app.route("/api/schedule")
 @require_auth
