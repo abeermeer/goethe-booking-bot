@@ -50,6 +50,19 @@ def init_db():
             key TEXT PRIMARY KEY,
             value TEXT
         );
+        CREATE TABLE IF NOT EXISTS queue_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT,
+            level TEXT,
+            city TEXT,
+            status TEXT DEFAULT 'pending',
+            priority INTEGER DEFAULT 0,
+            queued_at TEXT DEFAULT (datetime('now')),
+            started_at TEXT,
+            finished_at TEXT,
+            result_json TEXT
+        );
     """)
     conn.commit()
 
@@ -135,6 +148,50 @@ def clear_checkpoint(student_key: str):
 def clear_all_checkpoints():
     conn = _get_conn()
     conn.execute("DELETE FROM bot_state WHERE key LIKE 'checkpoint_%'")
+    conn.commit()
+
+
+def add_to_queue(name: str, email: str, level: str, city: str, priority: int = 0):
+    conn = _get_conn()
+    conn.execute(
+        "INSERT INTO queue_history (name, email, level, city, status, priority) VALUES (?, ?, ?, ?, 'pending', ?)",
+        (name, email, level, city, priority),
+    )
+    conn.commit()
+
+
+def get_queue(status: Optional[str] = None) -> List[Dict[str, Any]]:
+    conn = _get_conn()
+    if status:
+        rows = conn.execute("SELECT * FROM queue_history WHERE status = ? ORDER BY priority DESC, id ASC", (status,)).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM queue_history ORDER BY priority DESC, id ASC").fetchall()
+    return [dict(r) for r in rows]
+
+
+def update_queue_item(item_id: int, status: str, result: Optional[Dict] = None):
+    conn = _get_conn()
+    if status == "in_progress":
+        conn.execute("UPDATE queue_history SET status = ?, started_at = datetime('now') WHERE id = ?", (status, item_id))
+    elif status in ("completed", "failed"):
+        conn.execute(
+            "UPDATE queue_history SET status = ?, finished_at = datetime('now'), result_json = ? WHERE id = ?",
+            (status, json.dumps(result) if result else None, item_id),
+        )
+    else:
+        conn.execute("UPDATE queue_history SET status = ? WHERE id = ?", (status, item_id))
+    conn.commit()
+
+
+def delete_queue_item(item_id: int):
+    conn = _get_conn()
+    conn.execute("DELETE FROM queue_history WHERE id = ?", (item_id,))
+    conn.commit()
+
+
+def clear_queue():
+    conn = _get_conn()
+    conn.execute("DELETE FROM queue_history")
     conn.commit()
 
 

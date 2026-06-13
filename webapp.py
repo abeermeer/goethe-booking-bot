@@ -42,6 +42,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 import booking_helper as bot
 import db
 import alexa
+import student_queue as sqmod
 
 app = Flask(__name__)
 
@@ -70,6 +71,7 @@ bot_stop_event = threading.Event()
 bot_thread: Optional[threading.Thread] = None
 bot_running = False
 log_queue: queue.Queue = queue.Queue()
+student_queue = sqmod.StudentQueue()
 student_status: Dict[str, Dict] = {}  # name -> {status, color, details}
 student_results: List[Dict] = []
 config_path: str = ""
@@ -491,6 +493,97 @@ def api_schedule_cancel():
     scheduler_stop.set()
     scheduled_start = None
     return jsonify({"ok": True, "message": "Schedule cancelled"})
+
+
+# ── Queue endpoints ──
+
+@app.route("/api/queue/enqueue", methods=["POST"])
+@require_auth
+def api_queue_enqueue():
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "Missing name"}), 400
+    item_id = student_queue.enqueue(
+        name=name,
+        email=data.get("email", ""),
+        level=data.get("level", ""),
+        city=data.get("city", ""),
+        priority=data.get("priority", 0),
+    )
+    return jsonify({"ok": True, "id": item_id})
+
+
+@app.route("/api/queue/enqueue-many", methods=["POST"])
+@require_auth
+def api_queue_enqueue_many():
+    data = request.get_json(silent=True) or {}
+    students = data.get("students", [])
+    if not students:
+        return jsonify({"ok": False, "error": "Empty student list"}), 400
+    priority = data.get("priority", 0)
+    student_queue.enqueue_many(students, priority)
+    return jsonify({"ok": True, "count": len(students)})
+
+
+@app.route("/api/queue/dequeue", methods=["POST"])
+@require_auth
+def api_queue_dequeue():
+    item = student_queue.dequeue()
+    if not item:
+        return jsonify({"ok": False, "error": "Queue is empty"}), 404
+    return jsonify({"ok": True, "item": dict(item)})
+
+
+@app.route("/api/queue/complete", methods=["POST"])
+@require_auth
+def api_queue_complete():
+    data = request.get_json(silent=True) or {}
+    item_id = data.get("id")
+    if item_id is None:
+        return jsonify({"ok": False, "error": "Missing id"}), 400
+    student_queue.complete(item_id, data.get("result"))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/queue/fail", methods=["POST"])
+@require_auth
+def api_queue_fail():
+    data = request.get_json(silent=True) or {}
+    item_id = data.get("id")
+    if item_id is None:
+        return jsonify({"ok": False, "error": "Missing id"}), 400
+    student_queue.fail(item_id, data.get("result"))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/queue/reset", methods=["POST"])
+@require_auth
+def api_queue_reset():
+    data = request.get_json(silent=True) or {}
+    item_id = data.get("id")
+    if item_id is None:
+        return jsonify({"ok": False, "error": "Missing id"}), 400
+    student_queue.reset(item_id)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/queue")
+@require_auth
+def api_queue_list():
+    status = request.args.get("status")
+    if status:
+        items = db.get_queue(status=status)
+    else:
+        items = student_queue.all
+    return jsonify({"ok": True, "items": items, "summary": student_queue.summary()})
+
+
+@app.route("/api/queue/clear", methods=["POST"])
+@require_auth
+def api_queue_clear():
+    student_queue.clear()
+    return jsonify({"ok": True})
 
 
 # ── Database-backed endpoints ──
