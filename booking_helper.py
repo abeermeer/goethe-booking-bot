@@ -42,6 +42,7 @@ from selector_fallbacks import (
 )
 from proxy_rotator import ProxyRotator
 from confirmation_parser import parse_confirmation_text, parse_confirmation_url, summarize as summarize_confirmation
+from circuit_breaker import CircuitBreaker
 from selenium.common.exceptions import (
     NoSuchElementException,
     NoSuchWindowException,
@@ -97,6 +98,11 @@ USER_AGENTS = [
 VIEWPORTS = [(1920, 1080), (1366, 768), (1536, 864), (1440, 900), (1280, 720)]
 CAPTCHA_API_KEY = os.environ.get("CAPTCHA_API_KEY", "")
 MAX_SMART_RETRIES = int(os.environ.get("MAX_SMART_RETRIES", "2"))
+CIRCUIT_BREAKER_THRESHOLD = int(os.environ.get("CIRCUIT_BREAKER_THRESHOLD", "10"))
+CIRCUIT_BREAKER_COOLDOWN = int(os.environ.get("CIRCUIT_BREAKER_COOLDOWN", "900"))
+
+
+CIRCUIT_BREAKER = CircuitBreaker(threshold=CIRCUIT_BREAKER_THRESHOLD, cooldown=CIRCUIT_BREAKER_COOLDOWN)
 
 # ── Exam schedule (Pakistan 2026) ──
 EXAM_SCHEDULE = [
@@ -511,6 +517,9 @@ def smart_retry(student: Dict[str, str], use_headless: bool, logger: logging.Log
     status = result.get("status", "failed")
     if status in ("failed", "error") and attempt <= MAX_SMART_RETRIES:
         logger.warning("Smart retry %d/%d for %s", attempt, MAX_SMART_RETRIES, student.get("name", "?"))
+        if not CIRCUIT_BREAKER.wait_until_allowed(poll=5.0, stop_event=stop_event):
+            result["status"] = "stopped"
+            return result
         time.sleep(random.uniform(30, 60))
         result = smart_retry(student, use_headless, logger, stop_event, attempt + 1, immediate=immediate)
     return result
@@ -940,6 +949,13 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 db.clear_checkpoint(student_key)
                 return result
 
+            if not CIRCUIT_BREAKER.allow_request():
+                logger.warning("Circuit breaker open — pausing until cooldown expires")
+                if not CIRCUIT_BREAKER.wait_until_allowed(poll=5.0, stop_event=stop_event):
+                    result["status"] = "stopped"
+                    return result
+                continue
+
             burst = exam_dt - dt.timedelta(seconds=BURST_BEFORE_SECONDS) <= dt.datetime.now() <= exam_dt + dt.timedelta(seconds=BURST_AFTER_SECONDS)
 
             try:
@@ -952,6 +968,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 page_loaded = True
 
                 if not burst and is_blocked_response(driver):
+                    CIRCUIT_BREAKER.record_failure()
                     cd = long_cooldown()
                     logger.warning("Block detected. Cooling down %ss", cd)
                     for _ in range(cd):
@@ -995,6 +1012,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 notify(f"Slot found for {name}", f"Exam: {level} | City: {city}", logger)
                 human_move_and_click(driver, target_button)
                 enforce_single_tab(driver)
+                CIRCUIT_BREAKER.record_success()
                 consecutive_errors = 0
                 step1_done = True
                 db.save_checkpoint(student_key, 1)
@@ -1007,6 +1025,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 time.sleep(gap)
                 page_loaded = False
             except WebDriverException as exc:
+                CIRCUIT_BREAKER.record_failure()
                 consecutive_errors += 1
                 gap = BURST_CRASH_RETRY * 2 if burst else bounded_backoff(consecutive_errors, base=5, cap=120)
                 logger.error("WebDriver error: %s. Retry in %.1fs", exc, gap)
@@ -1104,6 +1123,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         logger.info("Interrupted by user.")
         result["status"] = "interrupted"
     except Exception as exc:
+        CIRCUIT_BREAKER.record_failure()
         logger.exception("Flow error for %s: %s", name, exc)
         if assigned_proxy:
             PROXY_ROTATOR.mark_failed(assigned_proxy)
