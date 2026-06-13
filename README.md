@@ -163,6 +163,14 @@ Run `python webapp.py` then use ngrok for a public URL.
 | `frontend/index.html` | Frontend UI — deploy on Netlify (drag & drop) |
 | `frontend/_redirects` | Netlify SPA routing config |
 | `booking_helper.py` | Core bot engine (Selenium) |
+| `selector_fallbacks.py` | Multi-selector DOM fallback system |
+| `proxy_rotator.py` | Proxy health checks + blacklist rotation |
+| `student_queue.py` | Persistent student queue with priority |
+| `confirmation_parser.py` | Structured booking confirmation extraction |
+| `deadman.py` | Heartbeat monitor with auto-alert |
+| `db.py` | SQLite persistence layer |
+| `notifications.py` | Telegram + Email notifications |
+| `alexa.py` | AI assistant (Gemini 2.5 Flash Lite) |
 | `gui.py` | Desktop GUI (Tkinter) |
 | `config.csv` | Student data (edit before running) |
 | `Dockerfile` | Container for backend deployment |
@@ -183,3 +191,10 @@ Run `python webapp.py` then use ngrok for a public URL.
 ## Exam Dates Reference (2026)
 
 Check [Dates and Enrolment](https://www.goethe.de/ins/pk/en/spr/prf/anm.html) for exact dates.
+
+---
+
+<p align="center">
+  <sub>Built by <a href="https://github.com/abeermeer">Abeer Meer</a></sub><br>
+  <sub>© 2026 Abeer Meer. Licensed under the <a href="LICENSE">MIT License</a>.</sub>
+</p>
