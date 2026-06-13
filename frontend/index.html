@@ -562,6 +562,13 @@
         <span id="scheduleStatus" style="font-size:11px;color:var(--text2);"></span>
       </div>
 
+      <div class="section-title" style="margin:20px 0 10px;">Analytics</div>
+      <div id="analyticsRow" class="grid grid-3" style="margin-bottom:14px;">
+        <div class="card"><div class="card-hd"><h3>Students</h3></div><div id="analyticsTotal" style="font-size:28px;font-weight:700;">0</div></div>
+        <div class="card"><div class="card-hd"><h3>Success Rate</h3></div><div id="analyticsSuccess" style="font-size:28px;font-weight:700;color:var(--green);">0%</div></div>
+        <div class="card"><div class="card-hd"><h3>Queue</h3></div><div id="analyticsQueue" style="font-size:28px;font-weight:700;color:var(--accent);">0</div></div>
+      </div>
+
       <div class="section-title" style="margin:20px 0 10px;">Students</div>
       <div id="studentGrid" class="student-grid">
         <div class="empty-state">Connect to backend and load config</div>
@@ -603,15 +610,27 @@
         </div>
       </div>
 
-      <div class="section-title">History</div>
-      <div class="card">
+      <div class="section-title">Results History</div>
+      <div class="card" style="margin-bottom:14px;">
         <div id="resultsCard" style="display:none;">
           <table class="res-table">
-            <thead><tr><th>Student</th><th>Status</th><th>Reference</th></tr></thead>
+            <thead><tr><th>Student</th><th>Level</th><th>City</th><th>Status</th><th>Reference</th><th>Date</th><th>Time</th></tr></thead>
             <tbody id="resultsBody"></tbody>
           </table>
         </div>
         <div id="resultsEmpty" class="empty-state">No results yet</div>
+      </div>
+
+      <div class="section-title">Queue Management</div>
+      <div class="card">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <span id="queueSummary" style="font-size:13px;color:var(--text2);">Queue empty</span>
+          <button class="btn btn-danger btn-sm" onclick="clearQueue()">Clear</button>
+        </div>
+        <div class="card-hd" style="margin-bottom:8px;">
+          <h3>Items</h3>
+        </div>
+        <div id="queueBody" style="font-size:12px;color:var(--text2);">Connect to view queue</div>
       </div>
     </div>
 
@@ -792,6 +811,7 @@ async function fetchStatus() {
     updateBadge(data.running);
     toggleButtons(data.running);
     if (data.students) updateStudentUI(data.students);
+    updateAnalytics(data.students);
     if (!data.running && running) {
       running = false; closeSSE();
       setTimeout(loadResults, 1000);
@@ -1040,7 +1060,7 @@ async function loadResults() {
     document.getElementById("resultsCard").style.display = "";
     document.getElementById("resultsEmpty").style.display = "none";
     document.getElementById("resultsBody").innerHTML = results.map(r => {
-      return `<tr><td>${escHtml(r.name)}</td><td>${escHtml(r.status)}</td><td>${escHtml(r.reference||'')}</td></tr>`;
+      return `<tr><td>${escHtml(r.name)}</td><td>${escHtml(r.exam_level||r.level||'')}</td><td>${escHtml(r.exam_city||r.city||'')}</td><td>${escHtml(r.status)}</td><td>${escHtml(r.reference||'')}</td><td>${escHtml(r.exam_date||'')}</td><td>${escHtml(r.exam_time||'')}</td></tr>`;
     }).join("");
   } catch { /* ignore */ }
 }
@@ -1072,6 +1092,48 @@ function appendLog(data) {
 }
 
 function clearLog() { document.getElementById("logBox").innerHTML = ""; }
+
+// ── Analytics ──
+function updateAnalytics(students) {
+  if (!students || !students.length) return;
+  const total = students.length;
+  const confirmed = students.filter(s => s.status === "Confirmed!" || s.status === "Submitted").length;
+  const failed = students.filter(s => s.status === "Failed" || s.status === "Stopped").length;
+  document.getElementById("analyticsTotal").textContent = total;
+  document.getElementById("analyticsSuccess").textContent = total > 0 ? Math.round(confirmed / total * 100) + "%" : "0%";
+  fetchQueueSummary();
+}
+
+async function fetchQueueSummary() {
+  try {
+    const resp = await apiFetch(`${BASE}/api/queue`, { signal: AbortSignal.timeout(4000) });
+    const data = await resp.json();
+    if (!data.ok) return;
+    const s = data.summary;
+    document.getElementById("analyticsQueue").textContent = s.pending || 0;
+    document.getElementById("queueSummary").textContent =
+      `Pending: ${s.pending || 0} | Active: ${s.in_progress || 0} | Done: ${s.completed || 0} | Failed: ${s.failed || 0}`;
+    renderQueueItems(data.items);
+  } catch { /* ignore */ }
+}
+
+function renderQueueItems(items) {
+  const el = document.getElementById("queueBody");
+  if (!items || !items.length) {
+    el.textContent = "Queue is empty";
+    return;
+  }
+  el.innerHTML = `<table class="res-table"><thead><tr><th>Name</th><th>Level</th><th>City</th><th>Status</th></tr></thead><tbody>`
+    + items.map(i => `<tr><td>${escHtml(i.name)}</td><td>${escHtml(i.level)}</td><td>${escHtml(i.city)}</td><td>${escHtml(i.status)}</td></tr>`).join("")
+    + `</tbody></table>`;
+}
+
+async function clearQueue() {
+  try {
+    await apiFetch(`${BASE}/api/queue/clear`, { method: "POST", signal: AbortSignal.timeout(5000) });
+    fetchQueueSummary();
+  } catch { /* ignore */ }
+}
 
 // ── Notification settings ──
 function loadNotificationSettings() {
