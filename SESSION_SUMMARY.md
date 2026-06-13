@@ -334,6 +334,11 @@ git add -A; git commit -m "message"; git push origin main
 - Con: Backend crash = frontend also down; slower static file serving
 - Only recommended for early testing or ultra-simple setups
 
+## 13 Jun 2026 — README Rewrite + GitHub About Update
+- README completely rewritten: architecture diagram, 12 modules table, 66 tests matrix, env vars table, circuit breaker section, Alexa use case, security section, demo placeholder
+- GitHub About section updated with new description + 16 topics
+- Commit: `f37ab40`
+
 ## 13 Jun 2026 — Session 3: Security Audit + Circuit Breaker
 
 ### Git History Scrub
