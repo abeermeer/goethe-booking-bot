@@ -49,7 +49,7 @@ app = Flask(__name__)
 
 # ── Auth config ──
 AUTH_EMAIL = os.environ.get("AUTH_EMAIL", "admin@example.com")
-AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "ADMIN_PASSWORD_REDACTED")
+AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "change-me-in-production")
 AUTH_SALT = os.environ.get("AUTH_SALT", "goethe-bot-salt-2026")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "admin@example.com")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
