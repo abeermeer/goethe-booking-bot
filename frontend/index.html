@@ -341,6 +341,31 @@
   .topbar-left p { font-size: 13px; color: var(--text2); margin-top: 1px; }
   .topbar-right { display: flex; align-items: center; gap: 10px; }
 
+  .hamburger {
+    display: none; background: none; border: none; color: var(--text); cursor: pointer;
+    padding: 6px; font-size: 22px; line-height: 1; margin-right: 4px;
+  }
+
+  .mobile-nav-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 800;
+    display: none; flex-direction: column; padding: 20px 16px;
+  }
+  .mobile-nav-overlay.open { display: flex; }
+  .mobile-nav-hd {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
+  }
+  .mobile-nav-hd .close-btn {
+    background: none; border: none; color: var(--text); font-size: 22px; cursor: pointer; padding: 4px;
+  }
+  .mobile-nav-links { display: flex; flex-direction: column; gap: 4px; }
+  .mobile-nav-links a {
+    display: flex; align-items: center; gap: 10px; padding: 12px 10px;
+    border-radius: 6px; font-size: 15px; font-weight: 500;
+    color: var(--text2); text-decoration: none; transition: all 0.15s;
+  }
+  .mobile-nav-links a:hover { background: var(--surface2); color: var(--text); }
+  .mobile-nav-links a svg { width: 18px; height: 18px; flex-shrink: 0; }
+
   .status-badge {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500;
@@ -348,6 +373,8 @@
     color: var(--text2);
   }
   .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
 
   .section-title {
     font-size: 12px; font-weight: 600; text-transform: uppercase;
@@ -377,7 +404,27 @@
 
   @media (max-width:768px) {
     .sidebar { display: none; }
-    .main { padding: 16px; }
+    .hamburger { display: inline-flex; align-items: center; justify-content: center; }
+    .main { padding: 12px; }
+    .chat-panel { width: 100%; right: -100%; }
+    .chat-panel.open { right: 0; }
+    .login-card { width: calc(100% - 32px); max-width: 360px; padding: 20px; }
+    .countdown-item { min-width: 100%; }
+    .topbar-left h2 { font-size: 16px; }
+    .conn-bar { flex-direction: column; align-items: stretch; }
+    .conn-bar input { min-width: 0; }
+    .actions-bar { flex-direction: column; align-items: stretch; }
+    .actions-bar .btn-group, .actions-bar .mode-toggle { align-self: stretch; }
+    #scheduleRow.show { flex-direction: column; align-items: stretch; }
+    #scheduleRow.show input { max-width: none !important; }
+    .sched-table { font-size: 11px; }
+    .sched-table th, .sched-table td { padding: 4px 6px; }
+    .res-table { font-size: 12px; }
+    .res-table th, .res-table td { padding: 6px; }
+    .scard { padding: 14px; }
+    .card { padding: 14px; }
+    .log-box { height: 200px; font-size: 11px; padding: 8px; }
+    .settings-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -419,11 +466,42 @@
     </div>
   </div>
 
+  <div class="mobile-nav-overlay" id="mobileNav">
+    <div class="mobile-nav-hd">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="sidebar-logo-mark">G</div>
+        <span style="font-size:16px;font-weight:600;">Goethe Bot</span>
+      </div>
+      <button class="close-btn" onclick="toggleMobileNav()">&times;</button>
+    </div>
+    <div class="mobile-nav-links">
+      <a href="#" onclick="toggleMobileNav();showSection('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="#" onclick="toggleMobileNav();showSection('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Settings
+      </a>
+      <a href="#" onclick="toggleMobileNav();toggleChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Alexa
+      </a>
+      <a href="#" onclick="toggleMobileNav();doLogout()" style="color:var(--text3);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </a>
+    </div>
+  </div>
+
   <div class="main" id="mainArea">
     <div class="topbar">
-      <div class="topbar-left">
-        <h2 id="pageTitle">Dashboard</h2>
-        <p id="pageSubtitle">Manage your exam bookings</p>
+      <div class="topbar-left" style="display:flex;align-items:center;gap:8px;">
+        <button class="hamburger" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="pageSubtitle">Manage your exam bookings</p>
+        </div>
       </div>
       <div class="topbar-right">
         <div id="statusBadge" class="status-badge">
@@ -513,7 +591,7 @@
 
       <div class="section-title">Notifications</div>
       <div class="card" style="margin-bottom:14px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+        <div class="settings-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
           <span style="color:var(--text2);">Telegram Token</span>
           <input type="text" id="tgToken" placeholder="Bot token">
           <span style="color:var(--text2);">Telegram Chat ID</span>
@@ -595,6 +673,10 @@ function showSection(name) {
   document.getElementById("sectionSettings").style.display = name === "settings" ? "" : "none";
   document.getElementById("pageTitle").textContent = name === "dashboard" ? "Dashboard" : "Settings";
   document.getElementById("pageSubtitle").textContent = name === "dashboard" ? "Manage your exam bookings" : "Configure students and notifications";
+}
+
+function toggleMobileNav() {
+  document.getElementById("mobileNav").classList.toggle("open");
 }
 
 function doLogout() {
