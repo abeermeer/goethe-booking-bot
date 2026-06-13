@@ -35,6 +35,11 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
 from selenium import webdriver
+from selector_fallbacks import (
+    find_element_fallback,
+    find_elements_fallback,
+    wait_for_any_selector,
+)
 from selenium.common.exceptions import (
     NoSuchElementException,
     NoSuchWindowException,
@@ -338,13 +343,10 @@ def long_cooldown() -> int:
 
 
 def wait_for_finder(driver: webdriver.Chrome, timeout: int = 40) -> WebElement:
-    wait = WebDriverWait(driver, timeout)
-    for css in SELECTOR_REFERENCE["finder_container"]:
-        try:
-            return wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css)))
-        except TimeoutException:
-            continue
-    raise TimeoutException("Exam finder container did not load.")
+    result = wait_for_any_selector(driver, "finder_container", timeout=timeout)
+    if result is None:
+        raise TimeoutException("Exam finder container did not load.")
+    return result
 
 
 def normalize_text(value: str) -> str:
@@ -366,10 +368,9 @@ def looks_clickable(button: WebElement) -> bool:
 
 
 def find_book_buttons(driver: webdriver.Chrome) -> List[WebElement]:
-    xpath = SELECTOR_REFERENCE["book_button_xpath"]
-    buttons = driver.find_elements(By.XPATH, xpath)
+    buttons = find_elements_fallback(driver, "book_button", timeout=10)
     if not buttons:
-        fallback = driver.find_elements(By.CSS_SELECTOR, SELECTOR_REFERENCE["book_button_fallback_css"])
+        fallback = driver.find_elements(By.CSS_SELECTOR, "a.standard, button.standard")
         text_filtered = []
         for item in fallback:
             txt = normalize_text(item.text)
@@ -615,18 +616,13 @@ def type_slowly(element: WebElement, text: str) -> None:
 
 def click_continue_button(driver: webdriver.Chrome, logger: logging.Logger, timeout: int = 90) -> None:
     random_human_delay(1.0, 2.5)
-    xpath = (
-        "//*[self::a or self::button]"
-        "[contains(translate(normalize-space(.), "
-        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'continue')"
-        " or contains(translate(normalize-space(.), "
-        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'weiter')]"
-    )
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
             wait_for_document_ready(driver, timeout=timeout)
-            button = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+            button = find_element_fallback(driver, "continue_button", timeout=timeout, logger=logger)
+            if button is None:
+                raise NoSuchElementException("Continue button not found with any selector")
             logger.info("'Continue' button found. Clicking...")
             human_move_and_click(driver, button)
             return
@@ -640,20 +636,13 @@ def click_continue_button(driver: webdriver.Chrome, logger: logging.Logger, time
 
 def click_book_for_myself(driver: webdriver.Chrome, logger: logging.Logger, timeout: int = 90) -> None:
     random_human_delay(1.0, 2.5)
-    xpath = (
-        "//*[self::a or self::button]"
-        "[contains(translate(normalize-space(.), "
-        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'book for myself')"
-        " or contains(translate(normalize-space(.), "
-        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'für mich buchen')"
-        " or contains(translate(normalize-space(.), "
-        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'für mich')]"
-    )
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
             wait_for_document_ready(driver, timeout=timeout)
-            button = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+            button = find_element_fallback(driver, "book_for_myself", timeout=timeout, logger=logger)
+            if button is None:
+                raise NoSuchElementException("Book for myself button not found with any selector")
             logger.info("'Book for myself' button found. Clicking...")
             human_move_and_click(driver, button)
             return
@@ -683,7 +672,7 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
         wait_for_document_ready(driver, timeout=30)
         random_human_delay()
 
-        email_input = wait_and_find(driver, SELECTOR_REFERENCE["login_email_input"], timeout=15)
+        email_input = find_element_fallback(driver, "login_email", timeout=15, logger=logger)
         if email_input is None:
             logger.warning("Email field not found. Dumping page HTML for debugging.")
             logger.info("Page URL: %s", driver.current_url)
@@ -695,18 +684,24 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
         type_slowly(email_input, email)
         random_human_delay()
 
-        pwd_input = driver.find_element(By.CSS_SELECTOR, SELECTOR_REFERENCE["login_password_input"])
+        pwd_input = find_element_fallback(driver, "login_password", timeout=10, logger=logger)
+        if pwd_input is None:
+            logger.warning("Password field not found")
+            return False
         type_slowly(pwd_input, password)
         random_human_delay()
 
         try:
-            checkbox = driver.find_element(By.CSS_SELECTOR, SELECTOR_REFERENCE["login_checkbox_stay"])
-            if checkbox.is_displayed():
+            checkbox = find_element_fallback(driver, "login_checkbox_stay", timeout=5)
+            if checkbox and checkbox.is_displayed():
                 human_move_and_click(driver, checkbox)
         except (NoSuchElementException, TimeoutException):
             pass
 
-        submit_btn = driver.find_element(By.CSS_SELECTOR, SELECTOR_REFERENCE["login_submit_button"])
+        submit_btn = find_element_fallback(driver, "login_submit", timeout=10, logger=logger)
+        if submit_btn is None:
+            logger.warning("Submit button not found")
+            return False
         logger.info("Clicking login submit button...")
         human_move_and_click(driver, submit_btn)
 
@@ -775,8 +770,8 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
             if not value:
                 continue
             try:
-                el = driver.find_element(By.CSS_SELECTOR, SELECTOR_REFERENCE[selector_key])
-                if el.is_displayed():
+                el = find_element_fallback(driver, selector_key, timeout=5, logger=logger)
+                if el and el.is_displayed():
                     tag = el.tag_name.lower()
                     if tag == "select":
                         Select(el).select_by_visible_text(value)
@@ -791,15 +786,15 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
         try:
             address = student.get("address", "")
             if address:
-                addr_el = driver.find_element(By.CSS_SELECTOR, SELECTOR_REFERENCE["form_address"])
-                if addr_el.is_displayed():
+                addr_el = find_element_fallback(driver, "form_address", timeout=5)
+                if addr_el and addr_el.is_displayed():
                     type_slowly(addr_el, address)
                     random_human_delay()
         except (NoSuchElementException, TimeoutException):
             pass
 
         try:
-            terms = driver.find_elements(By.CSS_SELECTOR, SELECTOR_REFERENCE["form_terms"])
+            terms = find_elements_fallback(driver, "form_terms", timeout=5)
             for cb in terms:
                 if cb.is_displayed() and not cb.is_selected():
                     driver.execute_script("arguments[0].scrollIntoView({block:'center'});", cb)
@@ -812,8 +807,8 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
         try:
             level_val = student.get("level", student.get("exam_level", ""))
             if level_val:
-                level_el = driver.find_element(By.CSS_SELECTOR, SELECTOR_REFERENCE["form_level"])
-                if level_el.is_displayed():
+                level_el = find_element_fallback(driver, "form_level", timeout=5)
+                if level_el and level_el.is_displayed():
                     Select(level_el).select_by_visible_text(level_val)
                     random_human_delay()
         except (NoSuchElementException, TimeoutException):
@@ -821,28 +816,29 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
 
         random_human_delay(1.0, 2.0)
 
-        submit_btn = None
-        for selector in [
-            SELECTOR_REFERENCE["form_submit"],
-            "button.btn-primary, button.btn, button.standard",
-            "input[type='submit'], button[type='submit']",
-        ]:
-            try:
-                btns = driver.find_elements(By.CSS_SELECTOR, selector)
-                for btn in btns:
-                    if btn.is_displayed() and btn.is_enabled():
-                        submit_btn = btn
+        submit_btn = find_element_fallback(driver, "form_submit", timeout=10, logger=logger)
+
+        if submit_btn is None:
+            for fallback_selector in [
+                "button.btn-primary, button.btn, button.standard",
+                "input[type='submit'], button[type='submit']",
+            ]:
+                try:
+                    btns = driver.find_elements(By.CSS_SELECTOR, fallback_selector)
+                    for btn in btns:
+                        if btn.is_displayed() and btn.is_enabled():
+                            submit_btn = btn
+                            break
+                    if submit_btn:
                         break
-                if submit_btn:
-                    break
-            except Exception:
-                continue
+                except Exception:
+                    continue
 
         if submit_btn is None:
             all_buttons = driver.find_elements(By.TAG_NAME, "button")
             for btn in all_buttons:
                 txt = normalize_text(btn.text)
-                if any(x in txt for x in ["submit", "book", "register", "confirm", "submit", "send", "absenden", "buchen", "bestätigen"]):
+                if any(x in txt for x in ["submit", "book", "register", "confirm", "send", "absenden", "buchen", "bestätigen"]):
                     if btn.is_displayed() and btn.is_enabled():
                         submit_btn = btn
                         break
