@@ -73,34 +73,6 @@ EXAM_URLS = {
     "B1": os.environ.get("MOCK_B1_URL", "https://www.goethe.de/ins/pk/en/spr/prf/gzb1.cfm"),
 }
 
-SELECTOR_REFERENCE = {
-    "finder_container": ["#pr_finder_9523459", ".pr-finder"],
-    "book_button_xpath": (
-        "//*[self::a or self::button]"
-        "[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'book')"
-        " or contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'next')"
-        " or contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'book now')"
-        " or contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'buchen')"
-        " or contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'weiter')]"
-        "[contains(translate(@class, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'standard')]"
-        "[not(contains(translate(@class, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'disabled'))]"
-        "[not(contains(translate(@class, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'nicht-buchbar'))]"
-    ),
-    "book_button_fallback_css": "a.standard, button.standard",
-    "login_email_input": "input[type='email'], input[name='email'], input[name='username'], #email, #username",
-    "login_password_input": "input[type='password'], input[name='password'], #password, #passwort",
-    "login_submit_button": "button[type='submit'], input[type='submit'], .btn-submit, #login-button, .login-button",
-    "login_checkbox_stay": "input[type='checkbox']",
-    "form_name": "input[name*='name'], input[id*='name'], input[placeholder*='Name'], input[placeholder*='name']",
-    "form_dob": "input[name*='birth'], input[id*='birth'], input[name*='geburt'], input[type='date']",
-    "form_place_of_birth": "input[name*='place'], input[id*='place'], input[name*='ort'], input[placeholder*='Place'], input[placeholder*='Birth']",
-    "form_address": "textarea[name*='address'], input[name*='address'], textarea[id*='address']",
-    "form_phone": "input[name*='phone'], input[id*='phone'], input[name*='telefon'], input[name*='mobile'], input[type='tel']",
-    "form_level": "select[name*='level'], select[id*='level'], select[name*='stufe'], select[name*='kurs']",
-    "form_terms": "input[type='checkbox'], .terms input, .agb input, input[name*='agree'], input[name*='confirm']",
-    "form_submit": "button[type='submit'], input[type='submit'], .btn-submit, .submit-button, button:contains('Submit'), button:contains('Book'), button:contains('Confirm'), button:contains('Register')",
-}
-
 DEFAULT_POLL_INTERVAL = 45
 MIN_HUMAN_DELAY = 1.5
 MAX_HUMAN_DELAY = 5.5

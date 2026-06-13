@@ -6,7 +6,7 @@ venv
 *.png
 *.screenshot
 debug_*
-confirmation_*
+confirmation_*.png
 .env
 
 config.csv

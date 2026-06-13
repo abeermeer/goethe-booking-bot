@@ -15,6 +15,7 @@ DATE_PATTERNS: List[Pattern] = [
     re.compile(r"(\d{1,2}[./]\d{1,2}[./]\d{2,4})\s*(?:at|um|,)?\s*(\d{1,2}[:.]\d{2})", re.IGNORECASE),
     re.compile(r"(?:exam|prüfung|test|examination)\s*(?:date|day|datum|am)?\s*[:#]?\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})", re.IGNORECASE),
     re.compile(r"(?:date|datum)[:\s]+(\d{1,2}[./]\d{1,2}[./]\d{2,4})", re.IGNORECASE),
+    re.compile(r"(\d{1,2}[./]\d{1,2}[./]\d{2,4})", re.IGNORECASE),
 ]
 
 LEVEL_PATTERNS: List[Pattern] = [
@@ -22,7 +23,7 @@ LEVEL_PATTERNS: List[Pattern] = [
 ]
 
 CITY_PATTERNS: List[Pattern] = [
-    re.compile(r"(?:location|standort|city|stadt|place|ort)[:\s]+(\w[\w\s\-]+)", re.IGNORECASE),
+    re.compile(r"(?:location|standort|city|stadt|place|ort)[:\s]+([A-Za-z]+)", re.IGNORECASE),
 ]
 
 ERROR_PATTERNS: List[Pattern] = [
