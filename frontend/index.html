@@ -677,7 +677,8 @@
 
 <script>
 // ── State ──
-let BASE = localStorage.getItem("backend_url") || "";
+const DEFAULT_BACKEND = "https://goethe-booking-bot-production-092f.up.railway.app";
+let BASE = localStorage.getItem("backend_url") || DEFAULT_BACKEND;
 let running = false;
 let evtSource = null;
 let statusPollTimer = null;
@@ -735,7 +736,8 @@ async function doLogin() {
   const pass = document.getElementById("loginPass").value;
   const errEl = document.getElementById("loginError");
   errEl.textContent = "";
-  if (!BASE) { errEl.textContent = "Enter the backend URL"; return; }
+  errEl.style.display = "none";
+  if (!BASE) { errEl.textContent = "Enter the backend URL"; errEl.style.display = "block"; return; }
   try {
     const resp = await fetch(`${BASE}/api/login`, {
       method: "POST", headers: {"Content-Type": "application/json"},
@@ -743,17 +745,18 @@ async function doLogin() {
       signal: AbortSignal.timeout(10000),
     });
     const data = await resp.json();
-    if (!data.ok) { errEl.textContent = data.error || "Login failed"; return; }
+    if (!data.ok) { errEl.textContent = data.error || "Login failed"; errEl.style.display = "block"; return; }
     authToken = data.token;
     localStorage.setItem("auth_token", authToken);
     document.getElementById("loginOverlay").classList.add("hidden");
     connectBackend();
-  } catch (e) { errEl.textContent = "Connection error: " + e.message; }
+  } catch (e) { errEl.textContent = "Connection error: " + e.message; errEl.style.display = "block"; }
 }
 
 async function doForgotPassword() {
   const email = document.getElementById("loginEmail").value.trim();
-  if (!email) { document.getElementById("loginError").textContent = "Enter your email first"; return; }
+  const errEl = document.getElementById("loginError");
+  if (!email) { errEl.textContent = "Enter your email first"; errEl.style.display = "block"; return; }
   try {
     const resp = await fetch(`${BASE}/api/forgot-password`, {
       method: "POST", headers: {"Content-Type": "application/json"},
@@ -761,8 +764,9 @@ async function doForgotPassword() {
       signal: AbortSignal.timeout(10000),
     });
     const data = await resp.json();
-    document.getElementById("loginError").textContent = data.message || "Check your email for reset link";
-  } catch (e) { document.getElementById("loginError").textContent = "Error: " + e.message; }
+    errEl.textContent = data.message || "Check your email for reset link";
+    errEl.style.display = "block";
+  } catch (e) { errEl.textContent = "Error: " + e.message; errEl.style.display = "block"; }
 }
 
 // ── Init ──
