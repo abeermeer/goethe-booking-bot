@@ -1,4 +1,4 @@
-# Goethe Booking Bot — Session Summary (Updated 14 Jun 2026)
+# Goethe Booking Bot — Session Summary (Updated 14 Jun 2026 — Session 5)
 
 ## Project
 Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2, B1) — multi-student, multi-city.
@@ -7,7 +7,7 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 | Metric | Value |
 |--------|-------|
 | **Time invested** | ~15-18 hours (9 Jun – 14 Jun) |
-| **Commits** | 80 on `main` |
+| **Commits** | 83 on `main` |
 | **Modules** | 12 |
 | **Tests** | 66 |
 | **Token usage** | Not available (OpenCode server-side tracking). Estimated very heavy given 12 modules, 66 tests, and ~5 days of coding sessions. |
@@ -26,7 +26,7 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 | Service | URL | Status |
 |---------|-----|--------|
 | **Frontend (Netlify)** | https://goethe-booking-dashboard.netlify.app | ✅ Live |
-| **Backend (Railway)** | https://goethe-booking-bot-production-092f.up.railway.app | ✅ Online (rebuilt 14 Jun) |
+| **Backend (Railway)** | https://goethe-booking-bot-production-092f.up.railway.app | ✅ Online (env vars fixed 14 Jun) |
 | **Mock Site (Netlify)** | https://goethe-bot-mock.netlify.app | ✅ Live |
 | **Presentation (Netlify)** | https://goethe-bot-presentation.netlify.app | ✅ Live |
 | **GitHub** | https://github.com/abeermeer/goethe-booking-bot | ✅ Latest |
@@ -421,25 +421,61 @@ git add -A; git commit -m "message"; git push origin main
 - **Tests:** 12 (all states, transitions, concurrent safety, stop_event handling)
 - Commit: `c93310d`
 
+## 14 Jun 2026 — Session 5: Login Fix + Railway URL Recovery
+
+### Railway Project Recreated
+- Old Railway URL `a6a6.up.railway.app` → **404 Application not found**
+- New Railway URL: `https://goethe-booking-bot-production-092f.up.railway.app`
+- New Project ID: `df54b489-2cdf-48c4-9d53-1e3886858311`
+- New Service ID: `0596e8bf-ed43-4033-a585-0c67e7b3a43d`
+- Git workflow `deploy.yml` updated with new IDs
+
+### Env Var Name Bug — Fixed
+- **Root cause:** Railway had `ADMIN_EMAIL`/`ADMIN_PASSWORD` but code reads `AUTH_EMAIL`/`AUTH_PASSWORD`
+- **Fix:** Set `AUTH_EMAIL=hamzarafiq655@gmail.com` and `AUTH_PASSWORD=Hamza@123` on Railway
+- Backend redeployed with `railway up --detach`
+- Login verified: returns `{"ok":true,"token":"..."}`
+
+### Login Error Visibility Fix
+- `.login-error` div had `display:none` in CSS
+- `doLogin()` only set `textContent` — errors were invisible
+- Fix: added `errEl.style.display = "block"` to all error paths
+- Added `errEl.style.display = "none"` on clear
+- Same fix applied to `doForgotPassword()`
+- Default backend URL set to new Railway URL
+- Deployed to Netlify with new deploy token
+
 ### Final Stats
 | Metric | Value |
 |--------|-------|
-| Tests | 66 (54 old + 12 new) |
-| Commits | 80 on main |
-| Modules | 12 (+ `circuit_breaker.py`) |
-| Auth | HMAC → DB-backed sessions with 24hr expiry |
-| Repository | **PRIVATE** — secrets scrubbed from history |
+| Tests | 66 |
+| Commits | 83 on main |
+| Modules | 12 |
+| Auth | DB-backed sessions with 24hr expiry |
+| Repository | **PRIVATE** — secrets scrubbed |
 | Invoice | `Goethe Booking Bot Invoice.docx` — PKR 275,000 |
 | Video Demo | `Goethe-Booking-Bot-Demo.mp4` — 23 sec, 1080p |
 | FFmpeg | 8.1.1 + moviepy 2.2.1 — video generation ready |
+| Frontend URL | https://goethe-booking-dashboard.netlify.app |
+| Backend URL | https://goethe-booking-bot-production-092f.up.railway.app |
 
-### Commands — Session 4
+### Commands
 ```powershell
-# Generate video demo (if editing slides)
+# Generate video demo
 python Downloads\make_demo.py
 
 # Generate invoice
 python Downloads\generate_docx3.py
+
+# Deploy frontend to Netlify
+$env:NETLIFY_AUTH_TOKEN = "nfp_..."
+npx netlify-cli deploy --prod --dir=frontend
+
+# Deploy backend to Railway
+railway up --detach --service 0596e8bf-ed43-4033-a585-0c67e7b3a43d
+
+# Set Railway env vars
+railway variables set KEY="value"
 ```
 
 ### Client Handoff Procedure
