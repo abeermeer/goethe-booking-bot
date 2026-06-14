@@ -1364,9 +1364,22 @@ function renderQueueItems(items) {
     el.textContent = "Queue is empty";
     return;
   }
-  el.innerHTML = `<table class="res-table"><thead><tr><th>Name</th><th>Level</th><th>City</th><th>Status</th></tr></thead><tbody>`
-    + items.map(i => `<tr><td>${escHtml(i.name)}</td><td>${escHtml(i.level)}</td><td>${escHtml(i.city)}</td><td>${escHtml(i.status)}</td></tr>`).join("")
-    + `</tbody></table>`;
+  const priorityColors = { high: "var(--red)", medium: "var(--yellow)", low: "var(--green)" };
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">`
+    + items.map(i => {
+      const p = (i.priority || "low").toLowerCase();
+      const pc = priorityColors[p] || "var(--text3)";
+      return `<div style="background:var(--surface);border:1px solid var(--glass-border);border-radius:var(--radius);padding:12px;backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:all 0.25s ease;">`
+        + `<div style="position:absolute;top:0;left:0;bottom:0;width:3px;background:${pc};"></div>`
+        + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-weight:600;font-size:14px;color:var(--text);">${escHtml(i.name)}</span><span style="width:8px;height:8px;border-radius:50%;background:${pc};"></span></div>`
+        + `<div style="display:flex;gap:8px;font-size:12px;color:var(--text2);">`
+        + `<span class="exam-tag">${escHtml(i.level)}</span>`
+        + `<span>${escHtml(i.city)}</span>`
+        + `</div>`
+        + `<div style="margin-top:6px;"><span class="step">${escHtml(i.status)}</span></div>`
+        + `</div>`;
+    }).join("")
+    + `</div>`;
 }
 
 async function clearQueue() {
