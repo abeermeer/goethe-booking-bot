@@ -501,3 +501,74 @@ railway variables set KEY="value"
 5. Client creates Netlify account → drag & drop `frontend/` folder
 6. Provide `.env` template + screen recording of setup
 7. Admin access kept on Railway + GitHub for support
+
+## 14 Jun 2026 — Session 7: Final Frontend Polish (10 Tasks)
+
+### Task 1: Toast Notifications (`359352b`)
+- Toast container with `showToast(message, type)` helper
+- All 8 `alert()` calls replaced with non-blocking toasts
+- Types: success (green), error (red), info (accent)
+- Slide-in + fade-out animation, auto-dismiss after 3.5s
+
+### Task 2: Animated Hamburger SVG (`c52ebb6`)
+- CSS 3-line → X transition on `.hamburger.open`
+- Smooth middle line fade + top/bottom line rotate animation
+
+### Task 3: Settings Polish — Toggle Switches (`763c79a`)
+- iOS-style `.toggle` + `.slider` CSS toggle switches
+- Telegram + Email notification toggles with `field-label` class
+- Glass card settings grid
+
+### Task 4: Results Table — Status Badges (`1c7c7a9`)
+- `statusBadge()` helper: colored `.step` spans based on status text
+- Exam levels render as `.exam-tag` badges (A1/A2/B1)
+- Table cells use monospace font for reference numbers
+
+### Task 5: Skeleton Loaders (`afab6f7`)
+- CSS shimmer animation with gradient sweep
+- Skeleton placeholders for: student grid, analytics cards, log box, schedule
+- Appear on initial `loadDashboardData()` before real data arrives
+
+### Task 6: Countdown Animation (`a93920f`)
+- Gradient sweep across countdown bar (`countSweep` keyframe)
+- Tick pulse on countdown numbers (`countTick` keyframe — scale 1→1.05)
+- Color-coded urgency: red (<1min), yellow (<5min), accent
+
+### Task 7: Schedule Visual Cards (`b2f7e6b`)
+- Table → glass card grid layout (auto-fill, min 220px)
+- Level grouping with colored dot indicator (A1=accent, A2=green, B1=yellow)
+- Open/Full tag, detail rows with label:value pairs
+
+### Task 8: Queue Visual Cards (`5685755`)
+- Table → glass card grid layout
+- Priority indicator: 3px left bar + dot (red=high, yellow=medium, green=low)
+- Level badge, city, status step
+
+### Task 10: Keyboard Shortcuts (`9f8307a`)
+- `Esc` — close sidebar
+- `Ctrl/Cmd+Enter` — submit login/forgot-password form
+- `S` — focus student search (skips if input/textarea focused)
+
+### Task 11: Connection Retry Spinner (`dca41fa`)
+- CSS `.conn-spinner` spinning border animation
+- `connectBackend()` now retries 2 times with 1.5s/3s backoff
+- Shows "Connecting..." → "Retrying..." → "Final attempt..." with spinner
+- Falls back to "Cannot connect" (err class) on all failures
+
+### Final Stats (14 Jun EOD)
+| Metric | Value |
+|--------|-------|
+| Total commits | 96 on main |
+| Frontend file | 76KB, ~1550 lines |
+| Frontend score | 9.5/10 |
+| Features done | All 10 polish tasks deployed |
+| Last commit | `dca41fa` — feat: connection retry with animated spinner + auto-retry |
+| Railway URL | `https://goethe-booking-bot-production-092f.up.railway.app` |
+| Netlify URL | `https://goethe-booking-dashboard.netlify.app` |
+| Repo | `abeermeer/goethe-booking-bot` — private |
+
+### Remaining Pre-July 17
+- [ ] `CAPTCHA_API_KEY` env var on Railway (2Captcha ~$3)
+- [ ] `PROXY_LIST` env var with valid proxies
+- [ ] SMTP env vars for email notifications
+- [ ] Real booking test on July 17
