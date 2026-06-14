@@ -567,6 +567,54 @@ railway variables set KEY="value"
 | Netlify URL | `https://goethe-booking-dashboard.netlify.app` |
 | Repo | `abeermeer/goethe-booking-bot` — private |
 
+## 14 Jun 2026 — Session 8: Tier 3 Speed Optimization
+
+### Research Finding: Goethe Pakistan has MINIMAL bot detection
+- No Cloudflare, no reCAPTCHA, no WebDriver detection
+- Uses `<button disabled>` HTML attribute for slot availability (turns enabled when open)
+- Login via `login.goethe.de/cas/login` (standard CAS SSO)
+- Other GitHub bots (DENNIS-CODES, alyankabir17) already do full automation without anti-CAPTCHA
+- Verdict: Aggressive speed optimizations are safe
+
+### Changes Applied (commit `171e96b`)
+| Setting | Before | After |
+|---------|--------|-------|
+| Between-step delays | 2.0-4.0s | 0.5-1.0s |
+| Between form fields | 0.3-0.8s | 0.1-0.2s |
+| `type_slowly` per char | 0.03-0.12s | 0.01-0.05s |
+| `MIN/MAX_HUMAN_DELAY` | 0.8-2.5s | 0.3-1.0s |
+| `DEFAULT_POLL_INTERVAL` | 20s | 10s |
+| `human_move_and_click` pauses | 0.2-0.9s | 0.05-0.2s |
+| `random_scroll` + `random_mouse_wander` | 2s | removed |
+| `BURST_PRE_POLL` | 5s | 2s |
+| `BURST_POST_POLL` | 2-3s | 1-2s |
+| `click_continue` / `click_book` delays | 1.0-2.5s | 0.3-0.8s |
+| `BURST_CRASH_RETRY` | 1.5s | 1.0s |
+
+### New Timing: ~28-33s per student (was 50-60s)
+3 students (parallel): ~30-35s total
+
+### All 66 tests passing
+- Verified: `python -m pytest tests/ -v` → 66/66 passed
+
+### Final Project Rating: 7.8/10 (Production-ready for small business)
+Complete 10/10 gap analysis documented — 53 items across 8 categories.
+Fastest upgrade path: Swagger docs + Alembic + E2E tests + CSP + monitoring = 3-4 weeks to 8.5+
+
+### Final Stats (14 Jun EOD)
+| Metric | Value |
+|--------|-------|
+| Total commits | 98 on main |
+| Frontend file | 76KB, ~1590 lines |
+| Frontend score | 9.5/10 |
+| Backend score | 8/10 |
+| Overall project | 7.8/10 |
+| Features done | 10 frontend polish + Tier 3 speed optimization |
+| Last commit | `171e96b` — perf: Tier 3 speed optimizations |
+| Railway URL | `https://goethe-booking-bot-production-092f.up.railway.app` |
+| Netlify URL | `https://goethe-booking-dashboard.netlify.app` |
+| Repo | `abeermeer/goethe-booking-bot` — private |
+
 ### Remaining Pre-July 17
 - [ ] `CAPTCHA_API_KEY` env var on Railway (2Captcha ~$3)
 - [ ] `PROXY_LIST` env var with valid proxies
