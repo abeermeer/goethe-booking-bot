@@ -237,7 +237,15 @@
     background: var(--surface); border: 1px solid var(--glass-border); border-radius: var(--radius);
     padding: 12px 14px; margin-bottom: 16px; font-size: 13px;
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    position: relative; overflow: hidden;
   }
+  .countdown-bar::before {
+    content: ''; position: absolute; inset: 0; opacity: 0.04; pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%;
+    animation: countSweep 4s ease-in-out infinite;
+  }
+  @keyframes countSweep { 0%,100% { background-position: -100% 0; } 50% { background-position: 200% 0; } }
   .countdown-item {
     flex: 1; min-width: 180px;
     padding: 12px 16px; border-left: 3px solid var(--accent);
@@ -250,7 +258,8 @@
   }
   .countdown-item .label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; }
   .countdown-item .exam { font-size: 14px; font-weight: 600; color: var(--text); margin: 3px 0; }
-  .countdown-item .time { color: var(--accent); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .countdown-item .time { color: var(--accent); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; animation: countTick 0.3s ease; }
+  @keyframes countTick { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   .countdown-item .time.urgent { color: var(--yellow); }
   .countdown-item .time.critical { color: var(--red); animation: pulse 1s infinite; }
   .countdown-item .city { font-size: 11px; color: var(--text2); }
