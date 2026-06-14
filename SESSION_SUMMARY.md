@@ -769,3 +769,38 @@ Loaded and reviewed 6 creative skills for professional web development:
 | Netlify | https://goethe-booking-dashboard.netlify.app |
 | Telegram bot | @Hamzabookingbot |
 | Repo | abeermeer/goethe-booking-bot — private |
+## 14 Jun 2026 - Session 9: Telegram Notifications Connected
+
+### Bot Created via @BotFather
+- Username: @Hamzabookingbot
+- Token: 8928235858:AAEOgYkyuiMBA_e0gEMnFdjkvSW5uQ4hJMA
+- Chat ID: 6137210278 (Abeer Meer)
+
+### Railway Env Vars Set (via CLI)
+- TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID added to production environment
+- Railway redeployed to pick up changes
+- Hardcoded defaults removed from notifications.py (commit cd88f1c)
+
+### What gets notified via Telegram:
+- Slot found for a student
+- Booking complete (status + level + city)
+- Booking failed (screenshot saved)
+- Dead man switch alert (process hung/crashed)
+- Booking summary at end
+
+### Final Stats (14 Jun EOD)
+| Metric | Value |
+|--------|-------|
+| Total commits | 101 on main |
+| Last commit | cd88f1c |
+| Railway URL | https://goethe-booking-bot-production-092f.up.railway.app |
+| Netlify URL | https://goethe-booking-dashboard.netlify.app |
+| Telegram bot | @Hamzabookingbot |
+| Tests | 66/66 passing |
+| Project rating | 8/10 |
+
+### Remaining Pre-July 17
+- CAPTCHA_API_KEY env var on Railway (2Captcha ~$3)
+- PROXY_LIST env var with valid proxies
+- SMTP env vars for email notifications (Gmail App Password)
+- Real booking test on July 17
