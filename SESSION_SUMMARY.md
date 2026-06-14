@@ -741,3 +741,31 @@ Loaded and reviewed 6 creative skills for professional web development:
 - [ ] Load relevant design system from popular-web-designs
 - [ ] Run claude-design process (context â†’ system â†’ variants â†’ verify)
 - [ ] Deliver production-quality HTML artifact with GSAP animations
+
+## 14 Jun 2026 — Session 9: Telegram Notifications Connected
+
+### Bot Created
+- Username: @Hamzabookingbot
+- Token: 8928235858:AAEOgYkyuiMBA_e0gEMnFdjkvSW5uQ4hJMA
+- Chat ID: 6137210278 (Abeer Meer)
+- Defaults added to notifications.py (env var override still works)
+
+### What gets notified via Telegram:
+- ? Slot found for a student
+- ? Booking complete (status + level + city)
+- ? Booking failed (screenshot saved)
+- ? Dead man switch alert (process hung/crashed)
+- ? Booking summary at end
+
+### Recommended: Set Railway env vars from dashboard
+\TELEGRAM_BOT_TOKEN\ and \TELEGRAM_CHAT_ID\ as Railway variables (more secure than file defaults)
+
+### Final Stats
+| Metric | Value |
+|--------|-------|
+| Total commits | 100 on main |
+| Last commit | 6d4c25b — feat: wire Telegram bot token + chat ID |
+| Railway | https://goethe-booking-bot-production-092f.up.railway.app |
+| Netlify | https://goethe-booking-dashboard.netlify.app |
+| Telegram bot | @Hamzabookingbot |
+| Repo | abeermeer/goethe-booking-bot — private |
