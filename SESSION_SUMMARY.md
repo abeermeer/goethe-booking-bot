@@ -713,6 +713,21 @@ Fastest upgrade path: Swagger docs + Alembic + E2E tests + CSP + monitoring = 3-
 | Tests | 66/66 passing |
 | Project rating | 8/10 |
 
+## 14 Jun 2026 - Session 10: Dead Man Switch False Alarm Fix
+
+### Problem
+Dead man switch fired falsely every 5 min during idle. Only `deadman.ping()` call was in `/api/heartbeat` (line 460), which nobody called. 300s timeout → false alarm.
+
+### Fix
+1. **deadman.py**: Added `_stop_event` + `stop_monitor()` method. `start_monitor` changed from `time.sleep()` to `_stop_event.wait(timeout=interval)` for clean early exit.
+2. **webapp.py**: Moved `deadman.start_monitor()` from module load (line 83) into `run_students_web()` — only active during booking. Added `deadman.stop_monitor()` after booking ends.
+
+### Result
+- Dead man switch now only monitors during active booking runs
+- Zero false alarms during idle
+- 66/66 tests passing
+- Commit: `59cd1d9`
+
 ### Remaining Pre-July 17
 - CAPTCHA_API_KEY env var on Railway (2Captcha ~$3)
 - PROXY_LIST env var with valid proxies
