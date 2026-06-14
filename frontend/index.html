@@ -1248,20 +1248,25 @@ async function loadSchedule() {
     const resp = await apiFetch(`${BASE}/api/schedule`, { signal: AbortSignal.timeout(5000) });
     const data = await resp.json();
     if (!data || data.length === 0) {
-      document.getElementById("scheduleBody").innerHTML = '<span style="color:var(--muted);">No data</span>'; return;
+      document.getElementById("scheduleBody").innerHTML = '<span style="color:var(--text3);">No data</span>'; return;
     }
     const levels = ["A1","A2","B1"];
     let html = "";
     for (const lv of levels) {
       const items = data.filter(s => s.level === lv);
       if (!items.length) continue;
-      html += `<div class="sched-group"><h4>${lv}</h4><table class="sched-table">`;
-      html += `<tr><th>City</th><th>Exam</th><th>Bookable</th><th>Price</th><th>Status</th></tr>`;
+      const accentVar = lv === "A1" ? "var(--accent)" : lv === "A2" ? "var(--green)" : "var(--yellow)";
+      html += `<div class="sched-group" style="margin-bottom:16px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:8px;height:8px;border-radius:50%;background:${accentVar};"></span><h4 style="font-size:14px;font-weight:600;color:var(--text);">Level ${lv}</h4></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">`;
       for (const s of items) {
         const open = s.status !== "fully_booked";
-        html += `<tr><td>${escHtml(s.city)}</td><td>${escHtml(s.exam_date)}</td><td>${escHtml(s.bookable_from)}</td><td>${escHtml(s.price_full)}</td><td><span class="tag ${open?'tag-open':'tag-closed'}">${open ? '✅ Open' : '❌ Full'}</span></td></tr>`;
+        html += `<div style="background:var(--surface);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px;backdrop-filter:blur(12px);transition:all 0.25s ease;">`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:600;color:var(--text);">${escHtml(s.city)}</span><span class="tag ${open?'tag-open':'tag-closed'}">${open ? 'Open' : 'Full'}</span></div>`;
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;"><span style="color:var(--text3);">Exam</span><span style="color:var(--text2);text-align:right;">${escHtml(s.exam_date)}</span>`;
+        html += `<span style="color:var(--text3);">Bookable</span><span style="color:var(--text2);text-align:right;">${escHtml(s.bookable_from)}</span>`;
+        html += `<span style="color:var(--text3);">Price</span><span style="color:var(--text2);text-align:right;font-weight:500;">${escHtml(s.price_full)}</span></div>`;
+        html += `</div>`;
       }
-      html += `</table></div>`;
+      html += `</div></div>`;
     }
     document.getElementById("scheduleBody").innerHTML = html;
   } catch { document.getElementById("scheduleBody").innerHTML = '<span style="color:var(--red);">Failed</span>'; }
