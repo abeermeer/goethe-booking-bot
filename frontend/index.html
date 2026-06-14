@@ -1248,7 +1248,7 @@ async function loadResults() {
     document.getElementById("resultsCard").style.display = "";
     document.getElementById("resultsEmpty").style.display = "none";
     document.getElementById("resultsBody").innerHTML = results.map(r => {
-      return `<tr><td>${escHtml(r.name)}</td><td>${escHtml(r.exam_level||r.level||'')}</td><td>${escHtml(r.exam_city||r.city||'')}</td><td>${escHtml(r.status)}</td><td>${escHtml(r.reference||'')}</td><td>${escHtml(r.exam_date||'')}</td><td>${escHtml(r.exam_time||'')}</td></tr>`;
+      return `<tr><td>${escHtml(r.name)}</td><td><span class="exam-tag exam-${(r.exam_level||r.level||'A1')[0]}">${escHtml(r.exam_level||r.level||'')}</span></td><td>${escHtml(r.exam_city||r.city||'')}</td><td>${statusBadge(r.status)}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;">${escHtml(r.reference||'—')}</td><td>${escHtml(r.exam_date||'')}</td><td>${escHtml(r.exam_time||'')}</td></tr>`;
     }).join("");
   } catch { /* ignore */ }
 }
@@ -1280,6 +1280,15 @@ function appendLog(data) {
 }
 
 function clearLog() { document.getElementById("logBox").innerHTML = ""; }
+
+// ── Status badge helper ──
+function statusBadge(status) {
+  const s = (status || "").toLowerCase();
+  if (s.includes("confirm") || s.includes("submit")) return `<span class="step done">${escHtml(status)}</span>`;
+  if (s.includes("fail") || s.includes("stop") || s.includes("error")) return `<span class="step fail">${escHtml(status)}</span>`;
+  if (s.includes("progress") || s.includes("running") || s.includes("active")) return `<span class="step active">${escHtml(status)}</span>`;
+  return `<span class="step">${escHtml(status)}</span>`;
+}
 
 // ── Toast Notifications ──
 function showToast(message, type = "info") {
