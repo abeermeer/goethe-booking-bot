@@ -80,7 +80,6 @@ bot_running = False
 log_queue: queue.Queue = queue.Queue()
 student_queue = sqmod.StudentQueue()
 deadman = DeadManSwitch()
-deadman.start_monitor(interval=120, on_death=lambda: deadman_alert())
 student_status: Dict[str, Dict] = {}  # name -> {status, color, details}
 student_results: List[Dict] = []
 config_path: str = ""
@@ -167,6 +166,7 @@ def run_students_web(students: List[Dict], headless: bool, immediate: bool = Fal
     global bot_stop_event, bot_running, student_status, student_results
     bot_stop_event.clear()
     bot_running = True
+    deadman.start_monitor(interval=120, on_death=lambda: deadman_alert())
 
     db.save_students(students)
     master_logger = setup_web_logger("web_bot")
@@ -216,6 +216,7 @@ def run_students_web(students: List[Dict], headless: bool, immediate: bool = Fal
         t.join()
 
     bot_running = False
+    deadman.stop_monitor()
     master_logger.info("All students finished")
     log_queue.put(None)  # Signal SSE stream to end
 

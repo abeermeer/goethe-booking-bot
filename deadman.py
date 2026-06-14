@@ -13,6 +13,8 @@ class DeadManSwitch:
         self._lock = threading.Lock()
         self._alive = True
         self._timeout_secs = 300
+        self._stop_event = threading.Event()
+        self._monitor_thread: Optional[threading.Thread] = None
 
     def ping(self) -> None:
         with self._lock:
@@ -43,9 +45,11 @@ class DeadManSwitch:
             return time.monotonic() - self._last_heartbeat
 
     def start_monitor(self, interval: int = 60, on_death: Optional[callable] = None) -> threading.Thread:
+        self._stop_event.clear()
         def _loop():
-            while True:
-                time.sleep(interval)
+            while not self._stop_event.is_set():
+                if self._stop_event.wait(timeout=interval):
+                    break
                 if not self.check():
                     if on_death:
                         try:
@@ -55,6 +59,9 @@ class DeadManSwitch:
                                 self.logger.exception("Dead man callback failed: %s", exc)
                     break
 
-        t = threading.Thread(target=_loop, daemon=True)
-        t.start()
-        return t
+        self._monitor_thread = threading.Thread(target=_loop, daemon=True)
+        self._monitor_thread.start()
+        return self._monitor_thread
+
+    def stop_monitor(self) -> None:
+        self._stop_event.set()
