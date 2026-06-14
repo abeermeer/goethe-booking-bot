@@ -498,6 +498,24 @@
   .conn-bar .status-text.ok { color: var(--green); }
   .conn-bar .status-text.err { color: var(--red); }
 
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+  }
+  .toast {
+    padding: 12px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; color: #fff;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-lg); pointer-events: auto;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 3.7s forwards;
+    display: flex; align-items: center; gap: 8px; min-width: 240px;
+  }
+  .toast-success { background: rgba(45,212,160,0.9); border: 1px solid rgba(45,212,160,0.3); }
+  .toast-error { background: rgba(240,74,90,0.9); border: 1px solid rgba(240,74,90,0.3); }
+  .toast-info { background: rgba(79,140,255,0.9); border: 1px solid rgba(79,140,255,0.3); }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-8px) scale(0.95); } }
+
   @media (max-width:768px) {
     .sidebar { display: none; }
     .hamburger { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
@@ -1035,11 +1053,14 @@ async function uploadConfig(event) {
         document.getElementById("configInfo").textContent = `${data.count} student(s) uploaded`;
         document.getElementById("configPreview").textContent = e.target.result;
         await loadConfigFromBackend();
+        showToast(`${data.count} student(s) uploaded`, "success");
       } else {
         document.getElementById("configInfo").textContent = (data.error || "Upload failed");
+        showToast(data.error || "Upload failed", "error");
       }
     } catch (err) {
       document.getElementById("configInfo").textContent = "Upload error";
+      showToast("Upload error", "error");
     }
   };
   reader.readAsText(file);
@@ -1053,12 +1074,12 @@ function toggleConfigPreview() {
 
 // ── Start / Stop ──
 async function startBot() {
-  if (!connected) return alert("Connect to backend first");
+  if (!connected) return showToast("Connect to backend first", "error");
 
   // Schedule mode
   if (currentMode === "later") {
     const dt = document.getElementById("scheduleDt").value;
-    if (!dt) return alert("Select a date/time for the schedule");
+    if (!dt) return showToast("Select a date/time for the schedule", "error");
     try {
       const resp = await apiFetch(`${BASE}/api/schedule-start`, {
         method: "POST", headers: {"Content-Type": "application/json"},
@@ -1066,7 +1087,8 @@ async function startBot() {
       });
       const data = await resp.json();
       document.getElementById("scheduleStatus").textContent = data.ok ? "Scheduled for " + dt : data.error || "Failed";
-    } catch(e) { alert("Schedule failed"); }
+      if (data.ok) showToast("Scheduled for " + dt, "success");
+    } catch(e) { showToast("Schedule failed", "error"); }
     return;
   }
 
@@ -1083,12 +1105,13 @@ async function startBot() {
       body: JSON.stringify(body), signal: AbortSignal.timeout(10000),
     });
     const data = await resp.json();
-    if (!data.ok) return alert("Error: " + data.error);
+    if (!data.ok) return showToast("Error: " + data.error, "error");
     document.getElementById("logBox").innerHTML = "";
     document.getElementById("resultsCard").style.display = "none";
     document.getElementById("resultsEmpty").style.display = "";
     startSSE();
-  } catch (e) { alert("Failed: " + e.message); }
+    showToast("Bot started", "success");
+  } catch (e) { showToast("Failed: " + e.message, "error"); }
 }
 
 async function stopBot() {
@@ -1097,7 +1120,8 @@ async function stopBot() {
     await apiFetch(`${BASE}/api/stop`, { method: "POST", signal: AbortSignal.timeout(5000) });
     closeSSE();
     setTimeout(loadResults, 2000);
-  } catch (e) { alert("Stop failed: " + e.message); }
+    showToast("Bot stopped", "info");
+  } catch (e) { showToast("Stop failed: " + e.message, "error"); }
 }
 
 // ── Mode Toggle ──
@@ -1116,7 +1140,7 @@ function setMode(mode) {
 // ── Schedule ──
 async function scheduleStart() {
   const dt = document.getElementById("scheduleDt").value;
-  if (!dt) return alert("Select a date/time");
+  if (!dt) return showToast("Select a date/time", "error");
   try {
     const resp = await apiFetch(`${BASE}/api/schedule-start`, {
       method: "POST", headers: {"Content-Type": "application/json"},
@@ -1124,7 +1148,8 @@ async function scheduleStart() {
     });
     const data = await resp.json();
     document.getElementById("scheduleStatus").textContent = data.ok ? "Scheduled for " + dt : data.error || "Failed";
-  } catch(e) { alert("Schedule failed"); }
+    if (data.ok) showToast("Scheduled for " + dt, "success");
+  } catch(e) { showToast("Schedule failed", "error"); }
 }
 
 async function cancelSchedule() {
@@ -1212,6 +1237,17 @@ function appendLog(data) {
 }
 
 function clearLog() { document.getElementById("logBox").innerHTML = ""; }
+
+// ── Toast Notifications ──
+function showToast(message, type = "info") {
+  const container = document.getElementById("toastContainer");
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  const icons = { success: "✓", error: "✕", info: "●" };
+  el.innerHTML = `<span>${icons[type] || "●"}</span><span>${message}</span>`;
+  container.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 4000);
+}
 
 // ── Analytics ──
 function updateAnalytics(students) {
@@ -1415,5 +1451,6 @@ function escHtml(s) {
   return d.innerHTML;
 }
 </script>
+<div class="toast-container" id="toastContainer"></div>
 </body>
 </html>
