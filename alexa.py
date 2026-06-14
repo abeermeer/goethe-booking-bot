@@ -72,7 +72,7 @@ You can perform actions using function calling:
 - Give help on any topic
 
 ### Deployment
-- Railway URL: https://goethe-booking-bot-production.up.railway.app
+- Railway URL: https://goethe-booking-bot-production-092f.up.railway.app
 - Netlify dashboard: https://goethe-booking-dashboard.netlify.app
 - Mock site: https://goethe-bot-mock.netlify.app
 - Admin login: admin@example.com
@@ -315,7 +315,7 @@ class AlexaAssistant:
         topics = {
             "errors": "Common errors: element not found (site changed), CAPTCHA (set CAPTCHA_API_KEY), rate limited (increase delays), login failed (check CSV), Chrome crash (upgrade Railway).",
             "config": "Settings: MIN_HUMAN_DELAY (1.5-5.5s), MAX_HUMAN_DELAY (3-8s), BURST_BEFORE_SECONDS (10), BURST_AFTER_SECONDS (150), DEFAULT_POLL_INTERVAL (45s), CAPTCHA_API_KEY, PROXY_LIST, MAX_SMART_RETRIES (2).",
-            "deployment": "Backend Railway, Frontend Netlify. URL: goethe-booking-bot-production.up.railway.app. Dashboard: goethe-booking-dashboard.netlify.app.",
+            "deployment": "Backend Railway, Frontend Netlify. URL: goethe-booking-bot-production-092f.up.railway.app. Dashboard: goethe-booking-dashboard.netlify.app.",
             "students": "Loaded from config.csv. Each student: name, email, password, level (A1/A2/B1), city, booking_datetime.",
             "steps": "7 steps: Poll > Book Now > Continue > Book for Myself > CAS Login > Fill Form > Confirm. Checkpoints save after each step.",
         }

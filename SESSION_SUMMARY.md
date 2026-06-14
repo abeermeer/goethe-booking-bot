@@ -17,7 +17,7 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 | Service | URL | Status |
 |---------|-----|--------|
 | **Frontend (Netlify)** | https://goethe-booking-dashboard.netlify.app | ✅ Live |
-| **Backend (Railway)** | https://goethe-booking-bot-production-a6a6.up.railway.app | ✅ Online |
+| **Backend (Railway)** | https://goethe-booking-bot-production-092f.up.railway.app | ✅ Online (new) |
 | **Mock Site (Netlify)** | https://goethe-bot-mock.netlify.app | ✅ Live |
 | **Presentation (Netlify)** | https://goethe-bot-presentation.netlify.app | ✅ Live |
 | **GitHub** | https://github.com/abeermeer/goethe-booking-bot | ✅ Latest |
@@ -119,13 +119,25 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 ## Tokens & IDs (REDACTED — secrets scrubbed from git history 13 Jun 2026)
 - Railway Project ID: `6aee17f5-fe9f-4496-a02d-e5f366d37c2a`
 - Railway Service ID: `783d4933-1de1-45b6-a198-08b6f07692cd`
-- Railway Service URL: `https://goethe-booking-bot-production-a6a6.up.railway.app`
-- Railway Old URL: `https://goethe-booking-bot-production.up.railway.app`
+- Railway Service URL: `https://goethe-booking-bot-production-092f.up.railway.app`
+- Railway Old URL: `https://goethe-booking-bot-production.up.railway.app` (dead)
 - Netlify URL: `https://goethe-booking-dashboard.netlify.app`
 - Mock Netlify URL: `https://goethe-bot-mock.netlify.app`
 - Presentation Site ID: `bb610061-8eff-4a22-bd50-f4c56a5f1c10`
 - Presentation URL: `https://goethe-bot-presentation.netlify.app`
 - All API tokens, deploy tokens, and keys removed from this file — rotate before re-deploying
+
+## 14 Jun 2026 — Railway Rebuild (Project was deleted)
+
+- Old Railway project (`6aee17f5`) was deleted — backend was returning 404
+- Created new project: `df54b489-2cdf-48c4-9d53-1e3886858311`
+- New service: `0596e8bf-ed43-4033-a585-0c67e7b3a43d`
+- New backend URL: `https://goethe-booking-bot-production-092f.up.railway.app`
+- Env vars restored: `GEMINI_API_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GOETHE_EMAIL`, `GOETHE_PASSWORD`
+- Deleted old `mexc-trading-bot` project to free up Railway free tier slot
+- Updated GitHub Actions `deploy.yml` with new project/service IDs
+- Updated `alexa.py` with new Railway URL
+- Remaining: set `CAPTCHA_API_KEY` and `EMAIL_SMTP_*` when user provides them
 
 ## 14 Jun 2026 — Session 4: Invoice + Video Demo Generation
 
@@ -148,10 +160,8 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 - **No changes pushed** — git is clean, no new commits this session
 - Last commit: `0e6f52b` (docs: update SESSION_SUMMARY.md)
 
-### Railway Status (14 Jun)
-- **Online** — `https://goethe-booking-bot-production-a6a6.up.railway.app`
-- Latest deployment: `c88369b4` — SUCCESS (13 Jun 23:43)
-- **No new deployments** this session — no code changes
+### Railway Status (14 Jun — rebuilt)
+- **Online** — `https://goethe-booking-bot-production-092f.up.railway.app`
 
 ## Current Config (3 students — all same account)
 | Name | Level | City | Booking DateTime |
@@ -190,7 +200,6 @@ netlify deploy --prod --dir=frontend
 netlify deploy --prod --dir=presentation --site bb610061-8eff-4a22-bd50-f4c56a5f1c10
 
 # Deploy backend to Railway
-$env:RAILWAY_API_TOKEN = "929e34b4-3441-4061-ab63-4f136181ac08"
 railway up --detach
 
 # Set/remove env vars

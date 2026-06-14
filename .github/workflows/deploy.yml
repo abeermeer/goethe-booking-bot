@@ -42,10 +42,10 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
       - name: Link Railway project
-        run: railway link --project 6aee17f5-fe9f-4496-a02d-e5f366d37c2a
+        run: railway link --project df54b489-2cdf-48c4-9d53-1e3886858311
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
       - name: Deploy to Railway
-        run: railway up --detach --service 783d4933-1de1-45b6-a198-08b6f07692cd
+        run: railway up --detach --service 0596e8bf-ed43-4033-a585-0c67e7b3a43d
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
