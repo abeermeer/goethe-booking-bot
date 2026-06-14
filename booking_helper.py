@@ -74,16 +74,16 @@ EXAM_URLS = {
     "B1": os.environ.get("MOCK_B1_URL", "https://www.goethe.de/ins/pk/en/spr/prf/gzb1.cfm"),
 }
 
-DEFAULT_POLL_INTERVAL = 20
-MIN_HUMAN_DELAY = 0.8
-MAX_HUMAN_DELAY = 2.5
+DEFAULT_POLL_INTERVAL = 10
+MIN_HUMAN_DELAY = 0.3
+MAX_HUMAN_DELAY = 1.0
 
 BURST_BEFORE_SECONDS = 10
 BURST_AFTER_SECONDS = 150
-BURST_PRE_POLL = 5.0
-BURST_POST_POLL_MIN = 2.0
-BURST_POST_POLL_MAX = 3.0
-BURST_CRASH_RETRY = 1.5
+BURST_PRE_POLL = 2.0
+BURST_POST_POLL_MIN = 1.0
+BURST_POST_POLL_MAX = 2.0
+BURST_CRASH_RETRY = 1.0
 
 # ── Proxy rotation ──
 PROXY_LIST = [p.strip() for p in os.environ.get("PROXY_LIST", "").split(",") if p.strip()]
@@ -389,9 +389,9 @@ def human_move_and_click(driver: webdriver.Chrome, element: WebElement) -> None:
     random_human_delay()
     actions = ActionChains(driver)
     actions.move_to_element(element)
-    actions.pause(random.uniform(0.2, 0.9))
-    actions.move_by_offset(random.randint(-4, 4), random.randint(-4, 4))
-    actions.pause(random.uniform(0.1, 0.5))
+    actions.pause(random.uniform(0.05, 0.2))
+    actions.move_by_offset(random.randint(-2, 2), random.randint(-2, 2))
+    actions.pause(random.uniform(0.03, 0.1))
     actions.click()
     actions.perform()
 
@@ -595,11 +595,11 @@ def type_slowly(element: WebElement, text: str) -> None:
     element.clear()
     for ch in text:
         element.send_keys(ch)
-        time.sleep(random.uniform(0.03, 0.12))
+        time.sleep(random.uniform(0.01, 0.05))
 
 
 def click_continue_button(driver: webdriver.Chrome, logger: logging.Logger, timeout: int = 90) -> None:
-    random_human_delay(1.0, 2.5)
+    random_human_delay(0.3, 0.8)
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
@@ -619,7 +619,7 @@ def click_continue_button(driver: webdriver.Chrome, logger: logging.Logger, time
 
 
 def click_book_for_myself(driver: webdriver.Chrome, logger: logging.Logger, timeout: int = 90) -> None:
-    random_human_delay(1.0, 2.5)
+    random_human_delay(0.3, 0.8)
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
@@ -738,7 +738,7 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
     logger.info("══ STEP 5: Filling registration form ══")
     try:
         wait_for_document_ready(driver, timeout=30)
-        random_human_delay(2.0, 4.0)
+        random_human_delay(0.5, 1.0)
 
         logger.info("Current URL after login: %s", driver.current_url)
         logger.info("Page title: %s", driver.title)
@@ -761,7 +761,7 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
                         Select(el).select_by_visible_text(value)
                     else:
                         type_slowly(el, value)
-                    random_human_delay(0.3, 0.8)
+                    random_human_delay(0.1, 0.2)
                     logger.info("Filled %s = %s", selector_key, value[:30])
             except (NoSuchElementException, TimeoutException):
                 logger.debug("Field not found: %s", selector_key)
@@ -798,7 +798,7 @@ def _fill_attempt(driver: webdriver.Chrome, student: Dict[str, str], logger: log
         except (NoSuchElementException, TimeoutException):
             logger.debug("Level dropdown not found")
 
-        random_human_delay(1.0, 2.0)
+        random_human_delay(0.3, 0.8)
 
         submit_btn = find_element_fallback(driver, "form_submit", timeout=10, logger=logger)
 
@@ -1039,7 +1039,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if not step1_done:
             raise RuntimeError("Step 1 failed after all retries")
 
-        random_human_delay(2.0, 4.0)
+        random_human_delay(0.5, 1.0)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
@@ -1053,7 +1053,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
             logger.info("★ STEP 2 DONE")
             db.save_checkpoint(student_key, 2)
 
-        random_human_delay(2.0, 4.0)
+        random_human_delay(0.5, 1.0)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
@@ -1067,7 +1067,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
             logger.info("★ STEP 3 DONE")
             db.save_checkpoint(student_key, 3)
 
-        random_human_delay(2.0, 4.0)
+        random_human_delay(0.5, 1.0)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
@@ -1085,8 +1085,8 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 driver.save_screenshot(f"debug_no_creds_{name}.png")
             db.save_checkpoint(student_key, 4)
 
-        random_human_delay(2.0, 4.0)
-        random_scroll(driver)
+        random_human_delay(0.5, 1.0)
+        #random_scroll(driver)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
@@ -1106,8 +1106,8 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 driver.save_screenshot(f"debug_form_{name}.png")
             db.save_checkpoint(student_key, 5)
 
-        random_human_delay(1.0, 2.0)
-        random_mouse_wander(driver)
+        random_human_delay(0.3, 0.8)
+        #random_mouse_wander(driver)
 
         conf = capture_confirmation(driver, name, logger)
         result.update(conf)
