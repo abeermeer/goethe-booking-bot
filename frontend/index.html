@@ -429,9 +429,22 @@
   .topbar-right { display: flex; align-items: center; gap: 10px; }
 
   .hamburger {
-    display: none; background: none; border: none; color: var(--text); cursor: pointer;
-    padding: 6px; font-size: 22px; line-height: 1; margin-right: 4px;
+    display: none; background: none; border: none; cursor: pointer;
+    padding: 10px; margin-right: 4px; position: relative;
+    width: 40px; height: 40px; flex-shrink: 0;
   }
+  .hamburger span {
+    display: block; width: 20px; height: 2px; background: var(--text2);
+    border-radius: 2px; position: absolute; left: 10px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hamburger span:nth-child(1) { top: 13px; }
+  .hamburger span:nth-child(2) { top: 19px; }
+  .hamburger span:nth-child(3) { top: 25px; }
+  .hamburger.open span:nth-child(1) { top: 19px; transform: rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger.open span:nth-child(3) { top: 19px; transform: rotate(-45deg); }
+  .hamburger:hover span { background: var(--text); }
 
   .mobile-nav-overlay {
     position: fixed; inset: 0; background: rgba(7,7,13,0.95); z-index: 800;
@@ -627,7 +640,7 @@
   <div class="main" id="mainArea">
     <div class="topbar">
       <div class="topbar-left" style="display:flex;align-items:center;gap:8px;">
-        <button class="hamburger" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+        <button class="hamburger" onclick="toggleMobileNav()" aria-label="Menu"><span></span><span></span><span></span></button>
         <div>
           <h2 id="pageTitle">Dashboard</h2>
           <p id="pageSubtitle">Manage your exam bookings</p>
@@ -828,6 +841,7 @@ function showSection(name) {
 
 function toggleMobileNav() {
   document.getElementById("mobileNav").classList.toggle("open");
+  document.querySelector(".hamburger").classList.toggle("open");
 }
 
 async function doLogout() {
