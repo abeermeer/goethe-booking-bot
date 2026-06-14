@@ -203,6 +203,19 @@
 
   .empty-state { text-align: center; padding: 32px; color: var(--text2); font-size: 13px; }
 
+  .skeleton {
+    background: linear-gradient(90deg, rgba(26,26,38,0.3) 25%, rgba(42,42,62,0.3) 50%, rgba(26,26,38,0.3) 75%);
+    background-size: 200% 100%; animation: shimmerBg 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes shimmerBg { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .skel-card { height: 120px; margin-bottom: 14px; }
+  .skel-line { height: 14px; margin-bottom: 8px; width: 60%; }
+  .skel-line.wide { width: 80%; }
+  .skel-line.narrow { width: 40%; }
+  .skel-analytics { height: 80px; }
+  .skel-student { height: 180px; }
+
   .mode-toggle { display: flex; background: rgba(26,26,38,0.4); border-radius: var(--radius-sm); padding: 3px; backdrop-filter: blur(8px); }
   .mode-toggle button {
     flex: 1; padding: 6px 14px; font-size: 12px; font-weight: 500; border: none; cursor: pointer;
@@ -727,22 +740,28 @@
 
       <div class="section-title fade-up" style="margin:20px 0 10px;">Analytics</div>
       <div id="analyticsRow" class="grid grid-3" style="margin-bottom:14px;">
-        <div class="card fade-up fade-up-d1"><div class="card-hd"><h3>Students</h3></div><div id="analyticsTotal" style="font-size:28px;font-weight:700;">0</div></div>
-        <div class="card fade-up fade-up-d2"><div class="card-hd"><h3>Success Rate</h3></div><div id="analyticsSuccess" style="font-size:28px;font-weight:700;color:var(--green);">0%</div></div>
-        <div class="card fade-up fade-up-d3"><div class="card-hd"><h3>Queue</h3></div><div id="analyticsQueue" style="font-size:28px;font-weight:700;color:var(--accent);">0</div></div>
+        <div class="card fade-up fade-up-d1"><div class="card-hd"><h3>Students</h3></div><div id="analyticsTotal" style="font-size:28px;font-weight:700;">—</div></div>
+        <div class="card fade-up fade-up-d2"><div class="card-hd"><h3>Success Rate</h3></div><div id="analyticsSuccess" style="font-size:28px;font-weight:700;color:var(--green);">—</div></div>
+        <div class="card fade-up fade-up-d3"><div class="card-hd"><h3>Queue</h3></div><div id="analyticsQueue" style="font-size:28px;font-weight:700;color:var(--accent);">—</div></div>
       </div>
 
       <div class="section-title fade-up fade-up-d3" style="margin:20px 0 10px;">Students</div>
       <div id="studentGrid" class="student-grid">
-        <div class="empty-state">Connect to backend and load config</div>
+        <div class="skeleton skel-student" style="grid-column:1/2;"></div>
+        <div class="skeleton skel-student" style="grid-column:2/3;"></div>
+        <div class="skeleton skel-student" style="grid-column:3/4;"></div>
       </div>
 
       <div class="section-title fade-up fade-up-d4" style="margin:20px 0 10px;">Activity Log</div>
-      <div class="log-box fade-up fade-up-d4" id="logBox"></div>
+      <div class="log-box fade-up fade-up-d4" id="logBox"><div class="skeleton skel-card"></div></div>
 
       <div class="section-title fade-up fade-up-d5" style="margin:20px 0 10px;">Exam Schedule 2026</div>
       <div class="card fade-up fade-up-d5">
-        <div id="scheduleBody" style="font-size:12px;color:var(--text2);padding:8px 0;">Connect to view schedule</div>
+        <div id="scheduleBody" style="font-size:12px;color:var(--text2);padding:8px 0;">
+          <div class="skeleton skel-line wide"></div>
+          <div class="skeleton skel-line"></div>
+          <div class="skeleton skel-line narrow"></div>
+        </div>
       </div>
     </div>
 
