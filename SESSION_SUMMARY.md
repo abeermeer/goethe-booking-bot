@@ -1,7 +1,16 @@
-# Goethe Booking Bot — Session Summary (Updated 13 Jun 2026)
+# Goethe Booking Bot — Session Summary (Updated 14 Jun 2026)
 
 ## Project
 Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2, B1) — multi-student, multi-city.
+
+## Project Stats
+| Metric | Value |
+|--------|-------|
+| **Time invested** | ~15-18 hours (9 Jun – 14 Jun) |
+| **Commits** | 80 on `main` |
+| **Modules** | 12 |
+| **Tests** | 66 |
+| **Token usage** | Not available (OpenCode server-side tracking). Estimated very heavy given 12 modules, 66 tests, and ~5 days of coding sessions. |
 
 ## User
 - GitHub: `abeermeer`
@@ -17,7 +26,7 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 | Service | URL | Status |
 |---------|-----|--------|
 | **Frontend (Netlify)** | https://goethe-booking-dashboard.netlify.app | ✅ Live |
-| **Backend (Railway)** | https://goethe-booking-bot-production-092f.up.railway.app | ✅ Online (new) |
+| **Backend (Railway)** | https://goethe-booking-bot-production-092f.up.railway.app | ✅ Online (rebuilt 14 Jun) |
 | **Mock Site (Netlify)** | https://goethe-bot-mock.netlify.app | ✅ Live |
 | **Presentation (Netlify)** | https://goethe-bot-presentation.netlify.app | ✅ Live |
 | **GitHub** | https://github.com/abeermeer/goethe-booking-bot | ✅ Latest |
@@ -127,7 +136,14 @@ Automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2
 - Presentation URL: `https://goethe-bot-presentation.netlify.app`
 - All API tokens, deploy tokens, and keys removed from this file — rotate before re-deploying
 
-## 14 Jun 2026 — Railway Rebuild (Project was deleted)
+## 14 Jun 2026 — Session 5: Railway Rebuild + Stats
+
+### Project Stats Recorded
+- Time invested: ~15-18 hours across 5 days (9-14 Jun)
+- 80 commits, 12 modules, 66 tests
+- Token usage: unable to query, but estimated very heavy
+
+### Railway Rebuild (Project was deleted)
 
 - Old Railway project (`6aee17f5`) was deleted — backend was returning 404
 - Created new project: `df54b489-2cdf-48c4-9d53-1e3886858311`
