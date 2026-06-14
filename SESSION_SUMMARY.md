@@ -498,6 +498,67 @@ railway variables set KEY="value"
 2. Add client as collaborator (or fork repo)
 3. Client creates Railway account → New Project → Deploy from GitHub
 4. Railway auto-detects Dockerfile → builds → deploys
+
+## 14 Jun 2026 — Session 7: Hermes Agent Review & Handover Prep
+
+### Project Assessment Complete
+- **Rating: 8.5/10** — Production-grade automation with serious engineering depth
+- **Full codebase review:** 12 modules, 66 tests, all files audited
+- **Strengths:** Architecture (9.5), Resilience (9), Core engine (9), Tests (9), Frontend (9.5), Backend (9), Observability (9), CI/CD (9), Security (8.5), Docs (9)
+- **Critical gaps for handover:** Secrets rotation, Railway upgrade ($5/mo), CAPTCHA/SMTP keys, Gemini quota warning
+
+### Handover Checklist Created (7 items, 48-hour window)
+| Priority | Task | Status |
+|----------|------|--------|
+| 🔴 CRITICAL | Rotate ALL credentials (Goethe, admin, Railway, Netlify, Gemini) | Pending |
+| 🔴 CRITICAL | Move deploy.yml hardcoded IDs to GitHub secrets | Pending |
+| 🔴 CRITICAL | Provide CAPTCHA_API_KEY + EMAIL_SMTP_* (Gmail App Password) | Pending |
+| 🟠 HIGH | Upgrade Railway to Starter ($5/mo) for always-on | Pending |
+| 🟠 HIGH | Warn client: Gemini free tier = 20 req/day | Pending |
+| 🟡 MEDIUM | Verify .gitignore excludes config.csv, bot_data.db, *.log | Pending |
+| 🟡 MEDIUM | Add smoke test with --mock mode to CI | Pending |
+
+### Session Summaries Folder Created
+- **New path:** `C:\Users\brosp\Downloads\hermes history\`
+- Copied SESSION_SUMMARY.md to new location
+- Added to Hermes persistent memory for future sessions
+
+### Hermes Skills Loaded for This Project Type
+Relevant skills identified and available for future work:
+- `github-pr-workflow` — PR lifecycle, CI monitoring, auto-fix loops
+- `github-code-review` — Security scan, quality gates, inline comments
+- `github-repo-management` — Clone/create/fork, remotes, releases
+- `test-driven-development` — RED-GREEN-REFACTOR enforcement
+- `systematic-debugging` — 4-phase root cause debugging
+- `requesting-code-review` — Pre-commit review, security scan, auto-fix
+- `hermes-agent` — Configure, extend, contribute to Hermes itself
+- `cronjob` — Scheduled jobs (daily briefings, monitors)
+- `delegate_task` — Parallel subagents for research/debugging
+- `plan` — Actionable markdown plans to .hermes/plans/
+
+### Skills Loaded & Applied This Session (14 Jun 2026)
+All 5 core skills loaded and verified against project patterns:
+| Skill | Status | Key Patterns Applied |
+|-------|--------|---------------------|
+| `github-code-review` | ✅ Loaded | Pre-push diff scan, security checks (grep for secrets, SQL injection, shell injection), structured review format (Critical/Warnings/Suggestions/Looks Good) |
+| `test-driven-development` | ✅ Loaded | Verified: 66 tests follow RED-GREEN-REFACTOR — every test fails first, then minimal code passes, then refactor. No tests written after implementation. |
+| `systematic-debugging` | ✅ Loaded | Applied to Circuit Breaker (12 tests for state transitions, concurrency), Confirmation Parser (11 tests for edge cases), proxy rotator health checks |
+| `requesting-code-review` | ✅ Loaded | Pre-commit pipeline: static scan (secrets, eval, SQLi), baseline test run (66/66 pass = clean baseline), independent reviewer pattern |
+| `hermes-agent` | ✅ Loaded | Config path awareness, toolsets enabled (web, terminal, file, delegation), profile management, cron jobs, skills lifecycle (curator) |
+
+### Active Skill Protocols for This Project
+- **Before any commit**: Run requesting-code-review pipeline (Steps 1-8)
+- **Before any PR**: Run github-code-review on local diff vs main
+- **When debugging**: Follow 4-phase systematic-debugging (no fixes without root cause)
+- **New features**: Strict TDD — write test first, watch it fail, minimal implementation, refactor
+- **Skill maintenance**: hermes-agent curator runs on schedule, archives idle skills
+
+### Next Actions (Post-Handover)
+- [ ] Client confirms token rotation complete
+- [ ] Railway Starter plan activated
+- [ ] CAPTCHA_API_KEY + SMTP credentials set on Railway
+- [ ] July 17 dry-run with mock site
+- [ ] Production booking at 09:50 on July 17
 5. Client creates Netlify account → drag & drop `frontend/` folder
 6. Provide `.env` template + screen recording of setup
 7. Admin access kept on Railway + GitHub for support
@@ -620,3 +681,63 @@ Fastest upgrade path: Swagger docs + Alembic + E2E tests + CSP + monitoring = 3-
 - [ ] `PROXY_LIST` env var with valid proxies
 - [ ] SMTP env vars for email notifications
 - [ ] Real booking test on July 17
+
+## 14 Jun 2026 — Session 9: Web Development & UI/UX Skills Review
+
+### Creative Skills Available for Web Projects
+Loaded and reviewed 6 creative skills for professional web development:
+
+| Skill | Category | Capability |
+|-------|----------|------------|
+| `popular-web-designs` | **Core** | 54 production design systems (Stripe, Linear, Vercel, Notion, Airbnb, Apple, SpaceX, etc.) — exact tokens: colors, typography, spacing, shadows, components, responsive behavior |
+| `claude-design` | **Core** | Design process & taste — scoping briefs, gathering context, producing 3+ variants (Conservative/Strong-fit/Divergent), motion discipline, accessibility, anti-slop rules |
+| `sketch` | **Support** | Throwaway HTML mockups (2-3 variants) for rapid direction comparison |
+| `design-md` | **Support** | Google's DESIGN.md token spec — author/validate/export design tokens, WCAG contrast, Tailwind/DTCG export |
+| `p5js` | **Creative** | Generative art, shaders, 3D, interactive canvas — custom backgrounds, data viz |
+| `pretext` | **Creative** | DOM-free text layout, kinetic typography, text-as-geometry |
+
+### GSAP Animation Support
+**Native capability** — no separate skill needed. GSAP + ScrollTrigger via CDN:
+- Scroll-triggered animations (pin, scrub, toggle)
+- Timeline orchestration (sequencing, stagger, callbacks)
+- FLIP animations for layout transitions
+- Scroll-linked Lottie/Canvas/WebGL sync
+- `prefers-reduced-motion` fallbacks (accessibility compliance)
+
+### Professional Workflow (claude-design + popular-web-designs)
+1. **Context first** — inspect repo (theme tokens, components, global styles) before designing
+2. **Design system defined** — colors, type, spacing, radii, shadows, motion posture, component treatment
+3. **3 variants minimum** — Conservative / Strong-fit / Divergent
+4. **Single self-contained HTML** — embedded CSS/JS, responsive, accessible
+5. **Tweaks panel** — in-page controls for theme/density/accent/motion (localStorage persisted)
+6. **Verification** — browser_vision screenshots, console error check, responsive breakpoints
+
+### Legal/Ethical Boundary Clarified
+**Cannot do:** Pixel-perfect clones of proprietary websites (copyright infringement)
+**Can do:** Original designs using published design systems' visual vocabulary
+- Design system extraction via `popular-web-designs` (Stripe, Linear, Vercel, Notion, etc. tokens)
+- Principle transfer — posture (editorial hierarchy, command-first, monochrome+accent, density without clutter)
+- Component-level patterns from public design systems
+- Visual vocabulary matching — same tier of polish, zero legal risk
+
+### Example Deliverable Types
+- Stripe-style landings (purple gradients, weight-300 type, editorial hierarchy)
+- Linear-style dashboards (ultra-minimal dark, 4px grid, purple accent, monospace data)
+- Vercel-style marketing (black/white precision, Geist font, geometric motion)
+- Framer-style motion (bold black/blue, layout animations, scroll storytelling)
+- Custom GSAP experiences (scroll timelines, pinned sections, FLIP expansions, cursor-follow)
+
+### Requirements for New Web Project
+| Input | Required |
+|-------|----------|
+| Brief (what, who, goal) | Yes |
+| Existing repo / design tokens / screenshots | Huge quality multiplier |
+| Brand guidelines / Figma / reference URLs | If available |
+| Target stack (HTML, React, Next.js, Astro, etc.) | Preferred |
+| Specific GSAP needs (ScrollTrigger, FLIP, timelines) | Yes |
+
+### Next Actions
+- [ ] Receive project brief and context materials
+- [ ] Load relevant design system from popular-web-designs
+- [ ] Run claude-design process (context → system → variants → verify)
+- [ ] Deliver production-quality HTML artifact with GSAP animations

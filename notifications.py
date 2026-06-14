@@ -12,8 +12,8 @@ import urllib.request
 from email.mime.text import MIMEText
 from typing import Optional
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8928235858:AAEOgYkyuiMBA_e0gEMnFdjkvSW5uQ4hJMA")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "6137210278")
 
 EMAIL_SMTP_HOST = os.environ.get("EMAIL_SMTP_HOST", "")
 EMAIL_SMTP_PORT = int(os.environ.get("EMAIL_SMTP_PORT", "587"))
