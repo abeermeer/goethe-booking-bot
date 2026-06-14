@@ -551,6 +551,8 @@
   .conn-bar .status-text { font-size: 12px; color: var(--text2); }
   .conn-bar .status-text.ok { color: var(--green); }
   .conn-bar .status-text.err { color: var(--red); }
+  .conn-spinner { display:inline-block; width:12px; height:12px; border:2px solid var(--glass-border); border-top-color:var(--accent); border-radius:50%; animation: connSpin 0.6s linear infinite; vertical-align:middle; margin-right:4px; }
+  @keyframes connSpin { to { transform: rotate(360deg); } }
 
   .toast-container {
     position: fixed; bottom: 24px; right: 24px; z-index: 9999;
@@ -980,29 +982,35 @@ if (authToken) {
 }
 
 // ── Connection ──
-async function connectBackend() {
+async function connectBackend(retries = 2) {
   BASE = document.getElementById("backendUrl").value.trim().replace(/\/+$/, "");
   localStorage.setItem("backend_url", BASE);
   const statusEl = document.getElementById("backendStatus");
-  statusEl.textContent = "Connecting...";
-  statusEl.className = "status-text";
-  try {
-    const resp = await apiFetch(`${BASE}/api/status`, { signal: AbortSignal.timeout(5000) });
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    connected = true;
-    statusEl.textContent = "Connected";
-    statusEl.className = "status-text ok";
-    updateBadge(false);
-    await loadConfigFromBackend();
-    await loadSchedule();
-    await loadScheduleStatus();
-    startStatusPoll();
-  } catch (e) {
-    connected = false;
-    statusEl.textContent = "Cannot connect";
-    statusEl.className = "status-text err";
-    document.getElementById("statusBadge").innerHTML = '<span class="dot dot-disconnected"></span> Disconnected';
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    statusEl.innerHTML = `<span class="conn-spinner"></span> ${attempt === 0 ? 'Connecting...' : attempt === 1 ? 'Retrying...' : 'Final attempt...'}`;
+    statusEl.className = "status-text";
+    try {
+      const resp = await apiFetch(`${BASE}/api/status`, { signal: AbortSignal.timeout(5000) });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      connected = true;
+      statusEl.innerHTML = "";
+      statusEl.textContent = "Connected";
+      statusEl.className = "status-text ok";
+      updateBadge(false);
+      await loadConfigFromBackend();
+      await loadSchedule();
+      await loadScheduleStatus();
+      startStatusPoll();
+      return;
+    } catch {
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+    }
   }
+  connected = false;
+  statusEl.innerHTML = "";
+  statusEl.textContent = "Cannot connect";
+  statusEl.className = "status-text err";
+  document.getElementById("statusBadge").innerHTML = '<span class="dot dot-disconnected"></span> Disconnected';
 }
 
 // ── Status Poll ──
