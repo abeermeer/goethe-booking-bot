@@ -236,6 +236,20 @@ class JsonFileHandler(logging.Handler):
             pass
 
 
+class JsonStreamHandler(logging.StreamHandler):
+    def emit(self, record: logging.LogRecord):
+        try:
+            entry = json.dumps({
+                "time": datetime.now().isoformat(),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": record.getMessage(),
+            })
+            print(entry, flush=True)
+        except Exception:
+            pass
+
+
 def setup_web_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -247,6 +261,7 @@ def setup_web_logger(name: str) -> logging.Logger:
     logger.addHandler(DbLogHandler())
     json_handler = JsonFileHandler(str(PROJECT_DIR / "bot_logs.ndjson"))
     logger.addHandler(json_handler)
+    logger.addHandler(JsonStreamHandler())
     return logger
 
 
@@ -686,6 +701,30 @@ def api_health():
             "threshold": cb.threshold,
             "cooldown_seconds": cb.cooldown,
         },
+    })
+
+@bp.route("/metrics")
+@require_auth
+def api_metrics():
+    students = db.get_students()
+    all_logs = db.get_logs(limit=10000)
+    total_bookings = sum(1 for s in students if s.get("status") == "booked")
+    failed_bookings = sum(1 for s in students if s.get("status") == "failed")
+    pending_bookings = sum(1 for s in students if s.get("status") in ("pending", ""))
+    error_logs = sum(1 for l in all_logs if l.get("level") == "ERROR")
+    cb = bot.CIRCUIT_BREAKER
+    return jsonify({
+        "students_total": len(students),
+        "students_booked": total_bookings,
+        "students_failed": failed_bookings,
+        "students_pending": pending_bookings,
+        "success_rate": round(total_bookings / len(students) * 100, 1) if students else 0,
+        "errors_total": error_logs,
+        "circuit_breaker": {
+            "state": cb.state,
+            "consecutive_failures": cb.consecutive_failures,
+        },
+        "uptime_seconds": round(time.time() - PROCESS_START_TIME),
     })
 
 @bp.route("/audit-log")
