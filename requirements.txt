@@ -9,3 +9,4 @@ sentry-sdk>=2.0
 flasgger>=0.9.7.1
 alembic>=1.13
 playwright>=1.40
+pydantic>=2.0

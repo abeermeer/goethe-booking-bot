@@ -31,6 +31,61 @@ from typing import Dict, List, Optional
 
 from collections import defaultdict
 
+from pydantic import BaseModel, Field, ValidationError
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=1, max_length=255)
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+
+class StudentItem(BaseModel):
+    student_id: str = Field(min_length=1, max_length=100)
+    name: str = Field(min_length=1, max_length=255)
+
+class StartRequest(BaseModel):
+    students: list[StudentItem] = Field(min_length=1)
+    headless: bool = True
+    immediate: bool = False
+    telegram_token: str = ""
+    telegram_chat_id: str = ""
+
+class ScheduleStartRequest(BaseModel):
+    datetime: str = Field(min_length=1)
+    students: list[StudentItem] = Field(min_length=1)
+
+class QueueEnqueueRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    email: str = ""
+    level: str = ""
+    city: str = ""
+    priority: int = 0
+
+class QueueEnqueueManyRequest(BaseModel):
+    students: list[StudentItem] = Field(min_length=1)
+
+class QueueCompleteRequest(BaseModel):
+    id: str | int
+    result: dict = {}  # type: ignore
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    history: list = Field(default_factory=list)
+
+def validate(model_cls):
+    def decorator(fn):
+        def wrapper(*args, **kwargs):
+            data = flask.request.get_json(silent=True) or {}
+            try:
+                validated = model_cls(**data)
+            except ValidationError as e:
+                return jsonify({"ok": False, "error": "Validation failed", "details": e.errors(include_input=False)}), 400
+            return fn(validated, *args, **kwargs)
+        wrapper.__name__ = fn.__name__
+        return wrapper
+    return decorator
+
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 import flask
@@ -337,7 +392,8 @@ def _check_rate_limit(ip: str) -> bool:
     }],
     "responses": {"200": {"description": "Login successful, returns token"}},
 })
-def api_login():
+@validate(LoginRequest)
+def api_login(data: LoginRequest):
     global _global_failures, _global_lockout_until
     ip = request.remote_addr or "unknown"
     if time.monotonic() < _global_lockout_until:
@@ -353,9 +409,8 @@ def api_login():
         resp.headers["Retry-After"] = "300"
         resp.headers["X-RateLimit-Remaining"] = "0"
         return resp
-    data = request.get_json(silent=True) or {}
-    email = data.get("email", "").strip().lower()
-    password = data.get("password", "")
+    email = data.email.strip().lower()
+    password = data.password
     if hmac.compare_digest(email, AUTH_EMAIL.lower()) and hmac.compare_digest(password, AUTH_PASSWORD):
         _global_failures = 0
         token = _make_token(AUTH_EMAIL)
@@ -370,9 +425,9 @@ def api_login():
 
 
 @bp.route("/forgot-password", methods=["POST"])
-def api_forgot_password():
-    data = request.get_json(silent=True) or {}
-    email = data.get("email", "").strip().lower()
+@validate(ForgotPasswordRequest)
+def api_forgot_password(data: ForgotPasswordRequest):
+    email = data.email.strip().lower()
     if email == AUTH_EMAIL.lower():
         return jsonify({"ok": True, "message": f"Reset link sent to {SUPPORT_EMAIL}"})
     return jsonify({"ok": True, "message": "If that email is registered, a reset link has been sent"})
@@ -511,7 +566,8 @@ def api_config_upload():
     }],
     "responses": {"200": {"description": "Bot started"}},
 })
-def api_start():
+@validate(StartRequest)
+def api_start(data: StartRequest):
     global bot_thread
 
     if bot_running:
@@ -521,15 +577,14 @@ def api_start():
     if not students:
         return jsonify({"ok": False, "error": "No students loaded. Load a config.csv first"}), 400
 
-    data = request.get_json(silent=True) or {}
-    headless = data.get("headless", not os.environ.get("DISPLAY"))
-    immediate = data.get("immediate", False)
+    headless = data.headless
     if not headless and not os.environ.get("DISPLAY"):
         headless = True
+    immediate = data.immediate
 
     global telegram_token, telegram_chat_id
-    telegram_token = data.get("telegram_token", telegram_token)
-    telegram_chat_id = data.get("telegram_chat_id", telegram_chat_id)
+    telegram_token = data.telegram_token or telegram_token
+    telegram_chat_id = data.telegram_chat_id or telegram_chat_id
 
     bot.TELEGRAM_BOT_TOKEN = telegram_token
     bot.TELEGRAM_CHAT_ID = telegram_chat_id
@@ -673,13 +728,10 @@ def scheduler_loop(target_iso: str):
 
 
 @bp.route("/schedule-start", methods=["POST"])
-@require_auth
-def api_schedule_start():
+@validate(ScheduleStartRequest)
+def api_schedule_start(data: ScheduleStartRequest):
     global scheduled_start, scheduler_thread, scheduler_stop
-    data = request.get_json(silent=True) or {}
-    dt_str = data.get("datetime", "")
-    if not dt_str:
-        return jsonify({"ok": False, "error": "Missing datetime"}), 400
+    dt_str = data.datetime
     try:
         datetime.fromisoformat(dt_str)
     except Exception:
@@ -713,18 +765,14 @@ def api_schedule_cancel():
 # ── Queue endpoints ──
 
 @bp.route("/queue/enqueue", methods=["POST"])
-@require_auth
-def api_queue_enqueue():
-    data = request.get_json(silent=True) or {}
-    name = data.get("name", "").strip()
-    if not name:
-        return jsonify({"ok": False, "error": "Missing name"}), 400
+@validate(QueueEnqueueRequest)
+def api_queue_enqueue(data: QueueEnqueueRequest):
     item_id = student_queue.enqueue(
-        name=name,
-        email=data.get("email", ""),
-        level=data.get("level", ""),
-        city=data.get("city", ""),
-        priority=data.get("priority", 0),
+        name=data.name,
+        email=data.email,
+        level=data.level,
+        city=data.city,
+        priority=data.priority,
     )
     return jsonify({"ok": True, "id": item_id})
 
@@ -737,8 +785,12 @@ def api_queue_enqueue_many():
     if not students:
         return jsonify({"ok": False, "error": "Empty student list"}), 400
     priority = data.get("priority", 0)
-    student_queue.enqueue_many(students, priority)
-    return jsonify({"ok": True, "count": len(students)})
+    try:
+        validated = QueueEnqueueManyRequest(students=students)
+    except ValidationError as e:
+        return jsonify({"ok": False, "error": "Validation failed", "details": e.errors(include_input=False)}), 400
+    student_queue.enqueue_many([s.model_dump() for s in validated.students], priority)
+    return jsonify({"ok": True, "count": len(validated.students)})
 
 
 @bp.route("/queue/dequeue", methods=["POST"])
@@ -869,17 +921,12 @@ else:
 
 
 @bp.route("/chat", methods=["POST"])
-@require_auth
-def api_chat():
+@validate(ChatRequest)
+def api_chat(data: ChatRequest):
     if not alexa_assistant:
         return jsonify({"ok": False, "error": "Alexa is not configured. Set GEMINI_API_KEY environment variable."}), 400
-    data = request.get_json(silent=True) or {}
-    message = data.get("message", "").strip()
-    history = data.get("history", [])
-    if not message:
-        return jsonify({"ok": False, "error": "Message is required"}), 400
     try:
-        reply = alexa_assistant.process(message, history)
+        reply = alexa_assistant.process(data.message, data.history)
         return jsonify({"ok": True, "reply": reply})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
