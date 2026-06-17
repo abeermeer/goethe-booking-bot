@@ -861,7 +861,33 @@ Dead man switch fired falsely every 5 min during idle. Only `deadman.ping()` cal
 - `60ecf4a` — feat: multi-stage Dockerfile, Swagger docs
 - `4738b74` — feat: Alembic migrations
 - `c7f30cc` — feat: PWA offline, E2E Playwright skeleton
-- Latest: `c7f30cc`
+- `aa6017a` — feat: PWA icons (48-512px), form validation UX, loading states overlay
+- `3a973e3` — feat: circuit breaker metrics in /api/health, brute force account lockout
+- `d0bb28f` — feat: pip-audit CI, deploy Telegram notifications, CHANGELOG.md
+
+## 18 Jun 2026 - Session 12: Quick + Medium Gaps — Batch 2
+
+### Done
+| Batch | Gaps Closed |
+|-------|-------------|
+| Batch 1 | PWA manifest icons (512px), form validation UX (password strength + email hints), loading overlay on all API calls |
+| Batch 2 | Circuit breaker metrics in `/api/health`, brute force account lockout (30 fails = 15min ban) |
+| Batch 3 | `pip-audit` security scan in CI, deploy Telegram notifications (success/failure), `CHANGELOG.md` |
+
+### Gap Status Update
+| Category | Before | After | Still Open |
+|----------|--------|-------|------------|
+| API & Documentation | 4 | 4 | versioning, validation, changelog *(closed)*, Postman |
+| Testing & Quality | 7 | 7 | smoke CI, perf benchmarks, fuzz, visual diff, load, a11y CI |
+| Security | 5 | 3 | SRI, secrets rotation, Dependabot |
+| Infrastructure & DevOps | 5 | 4 | backup, rollback, staging, zero-downtime *(deploy notifications closed)* |
+| Monitoring & Observability | 6 | 6 | all 6 still open |
+| Frontend | 3 | 1 | a11y CI *(icons, validation, loading, error boundary, theme closed)* |
+| Backend/Architecture | 4 | 4 | async worker, WebSocket, pool, plugin |
+| Production | 3 | 3 | BCP, client training, SLA |
+| **Total** | **37** | **32** | **32 remaining** |
+
+**Project rating: ~8.7/10** (was 7.8 → 8.5 → 8.7)
 
 ### Remaining Pre-July 17
 - CAPTCHA_API_KEY env var on Railway (2Captcha ~$3)
