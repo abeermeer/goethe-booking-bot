@@ -254,3 +254,18 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 - `GET /api/history` — returns queue history with finished timestamps
 - `GET /api/history/search?q=keyword` — full-text search across logs by student name or message content
 
+### Deployments
+| Platform | URL | Status |
+|----------|-----|--------|
+| GitHub | [abeermeer/goethe-booking-bot](https://github.com/abeermeer/goethe-booking-bot) | ✅ Pushed (`11f6b61`) |
+| Netlify | [goethe-booking-dashboard.netlify.app](https://goethe-booking-dashboard.netlify.app) | ✅ Deployed |
+| Railway | — | ❌ Needs login |
+
+### README Updated
+- Added features: Config Validation, Slot Pre-check, Booking History
+- Updated Circuit Breaker description (error-type-aware)
+- Added live Netlify URL, Railway section
+- Added new env vars: `POLL_INTERVAL`, `POLL_JITTER`, `CB_BLOCK_*`, `CB_TIMEOUT_*`, `CB_GENERIC_*`
+- Updated badge count (23 modules)
+
+

@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/tests-66%20passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/modules-22-orange" alt="Modules">
+  <img src="https://img.shields.io/badge/modules-23-orange" alt="Modules">
   <img src="https://img.shields.io/badge/gaps-0%20remaining-brightgreen" alt="Gaps">
 </p>
 
@@ -30,7 +30,7 @@
 - **Full Automation** — Clicks "Book Now" → "Continue" → "Book for Myself" → Login → Fill Form → Submit → Confirm
 - **Selector Fallback System** — 16 element types with 2-5 CSS/XPath fallbacks each. Survives page structure changes.
 - **Proxy Rotation** — Health-checked proxies with 5-min blacklist on failure. Self-healing when pool exhausted.
-- **Circuit Breaker** — Detects 503/Cloudflare blocks, stops hammering after 10 failures, retries after 15 min cooldown.
+- **Circuit Breaker** — Error-type-aware breaker: `block` (503/CAPTCHA/429) → threshold 5, cooldown 15 min; `timeout` → threshold 10, cooldown 5 min; `generic` → threshold 10, cooldown 15 min. Configurable via `CB_*` env vars.
 - **Student Queue** — Persistent priority queue with DB backing. Enqueue, dequeue, retry, track history.
 - **Confirmation Parser** — Extracts booking reference, exam date/time, level, city, errors from confirmation page.
 - **Dead Man Switch** — Heartbeat monitor. Auto-alerts via Telegram if process hangs or crashes.
@@ -38,7 +38,10 @@
 - **Telegram Notifications** — Instant success/failure alerts on your phone.
 - **AI Assistant (Alexa)** — Gemini 2.5 Flash Lite chatbot in the dashboard. Ask about booking status, student info, logs, or retry a student — all via natural language.
 - **Web Dashboard** — Full admin panel with analytics cards, queue management, activity log, scheduling, countdown timers.
-- **Anti-Detection** — Human-like delays, mouse jitter, Cloudflare/503 detection, random user agents.
+  - **Anti-Detection** — Human-like delays, mouse jitter, Cloudflare/503 detection, random user agents.
+  - **Config Validation** — Auto-validates CSV on upload: checks required fields, email format, valid level (A1-C2), city, DOB, datetime format — reports all errors at once.
+  - **Slot Pre-check** — `POST /api/slots/check` opens exam page and scans for "Book Now" buttons before starting the bot. Returns availability per student.
+  - **Booking History** — `GET /api/history` + full-text search `GET /api/history/search?q=...` across queue history and logs.
 - **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, brute force account lockout (30 fails = 15min ban), Sentry error tracking, audit log (`/api/audit-log`), SRI on static assets, Dependabot + pip-audit CI, secrets rotation script, HTTPS redirect option.
 - **Monitoring** — Health endpoint (`/api/health`) with DB + Chrome + circuit breaker checks, business metrics (`/api/metrics`), structured JSON logging to stdout, uptime monitor script, Telegram alerting script.
 - **Reliability** — Zero-downtime health gate in CI/CD, automated backup/restore script, rollback plan, staging environment reference, BCP docs.
@@ -135,7 +138,7 @@ Edit `config.csv` with student data:
 **Retry layers:**
 - Step 1 poll loop: infinite (never gives up on finding a slot)
 - Per-click retries: 3 attempts for stale elements
-- Smart retry: 3 full-flow restarts with fresh Chrome + proxy
+- Smart retry: 3 full-flow restarts with fresh Chrome + proxy; exponential backoff + jitter; transient errors (timeout/connection) get full retry budget, permanent errors give up after 1 retry
 
 ## AI Assistant (Alexa)
 
@@ -240,10 +243,14 @@ k6 run tests/k6_load.js        # load testing (requires k6)
 ## Deploy Online
 
 ### Frontend → Netlify (Free)
+**Live:** [goethe-booking-dashboard.netlify.app](https://goethe-booking-dashboard.netlify.app)
+
 Drag & drop `frontend/` folder to https://app.netlify.com/drop
 
 ### Backend → Railway ($5/mo recommended)
 Push to GitHub → Railway → New Project → Deploy from GitHub repo. Includes Dockerfile.
+
+**Live backend URL:** Set your frontend's "Backend URL" to your Railway deployment URL.
 
 **⚠️ IMPORTANT: Use PostgreSQL for persistence.**
 Railway containers restart periodically — SQLite data will be lost. After creating your Railway project:
@@ -278,6 +285,14 @@ Without Postgres, container restarts wipe your queue, logs, and student data.
 | `DATABASE_URL` | No | `sqlite:///bot_data.db` | PostgreSQL connection string |
 | `AUTH_SALT` | No | `goethe-bot-salt-2026` | Salt for token generation |
 | `SUPPORT_EMAIL` | No | `admin@example.com` | Shown in forgot-password response |
+| `POLL_INTERVAL` | No | 10 | Base polling interval (seconds) |
+| `POLL_JITTER` | No | 5 | Random jitter added to poll interval |
+| `CB_BLOCK_THRESHOLD` | No | 5 | Circuit breaker: block errors before cooldown |
+| `CB_BLOCK_COOLDOWN` | No | 900 | Circuit breaker: block cooldown (seconds) |
+| `CB_TIMEOUT_THRESHOLD` | No | 10 | Circuit breaker: timeout errors before cooldown |
+| `CB_TIMEOUT_COOLDOWN` | No | 300 | Circuit breaker: timeout cooldown (seconds) |
+| `CB_GENERIC_THRESHOLD` | No | 10 | Circuit breaker: generic errors before cooldown |
+| `CB_GENERIC_COOLDOWN` | No | 900 | Circuit breaker: generic cooldown (seconds) |
 | `PORT` | No | 5000 | Backend server port |
 
 ## Important Notes
