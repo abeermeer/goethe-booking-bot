@@ -51,6 +51,19 @@ jobs:
         run: railway up --detach --service 0596e8bf-ed43-4033-a585-0c67e7b3a43d
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      - name: Health check gate (zero-downtime verification)
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(curl -sf https://goethe-booking-bot-production-092f.up.railway.app/api/health 2>/dev/null | python -c "import sys,json; print(json.load(sys.stdin).get('status','down'))" 2>/dev/null || echo "down")
+            if [ "$STATUS" = "ok" ]; then
+              echo "Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Waiting... (attempt $i/30)"
+            sleep 5
+          done
+          echo "Health check failed after 30 attempts"
+          exit 1
       - name: Notify deploy success
         if: success()
         run: |
