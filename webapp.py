@@ -35,6 +35,7 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 import flask
 from flask import Flask, Response, jsonify, request
+from flasgger import Swagger, swag_from
 
 PROJECT_DIR = Path(__file__).parent.absolute()
 sys.path.insert(0, str(PROJECT_DIR))
@@ -47,6 +48,28 @@ from deadman import DeadManSwitch
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
+
+# ── Swagger / OpenAPI ──
+app.config["SWAGGER"] = {
+    "title": "Goethe Booking Bot API",
+    "version": "2.0.0",
+    "description": "Automated exam booking backend for Goethe-Institut Pakistan",
+    "termsOfService": "",
+    "specs_route": "/api/docs/",
+}
+swagger = Swagger(app, template={
+    "info": {
+        "contact": {"email": "hamzarafiq655@gmail.com"},
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "Enter: Bearer &lt;token&gt;",
+        }
+    },
+})
 
 # ── Sentry error tracking ──
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
@@ -291,6 +314,23 @@ def _check_rate_limit(ip: str) -> bool:
 # ── Auth routes ──
 
 @app.route("/api/login", methods=["POST"])
+@swag_from({
+    "tags": ["Auth"],
+    "summary": "Admin login",
+    "parameters": [{
+        "in": "body",
+        "name": "body",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "example": "admin@example.com"},
+                "password": {"type": "string", "example": "your-password"},
+            },
+            "required": ["email", "password"],
+        },
+    }],
+    "responses": {"200": {"description": "Login successful, returns token"}},
+})
 def api_login():
     ip = request.remote_addr or "unknown"
     if not _check_rate_limit(ip):
@@ -436,6 +476,22 @@ def api_config_upload():
 
 @app.route("/api/start", methods=["POST"])
 @require_auth
+@swag_from({
+    "tags": ["Bot"],
+    "summary": "Start booking for all loaded students",
+    "parameters": [{
+        "in": "body",
+        "name": "body",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "headless": {"type": "boolean", "default": True},
+                "immediate": {"type": "boolean", "default": False},
+            },
+        },
+    }],
+    "responses": {"200": {"description": "Bot started"}},
+})
 def api_start():
     global bot_thread
 
@@ -527,6 +583,11 @@ def api_heartbeat():
     })
 
 @app.route("/api/health")
+@swag_from({
+    "tags": ["System"],
+    "summary": "Health check — DB, uptime, Chrome status",
+    "responses": {"200": {"description": "Health status"}},
+})
 def api_health():
     db_ok = False
     try:
