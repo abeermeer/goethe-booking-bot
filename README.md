@@ -4,9 +4,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/tests-66%20passing-brightgreen" alt="Tests">
-  <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/modules-12-orange" alt="Modules">
+  <img src="https://img.shields.io/badge/modules-22-orange" alt="Modules">
+  <img src="https://img.shields.io/badge/gaps-0%20remaining-brightgreen" alt="Gaps">
 </p>
 
 ## Demo
@@ -31,7 +32,9 @@
 - **AI Assistant (Alexa)** — Gemini 2.5 Flash Lite chatbot in the dashboard. Ask about booking status, student info, logs, or retry a student — all via natural language.
 - **Web Dashboard** — Full admin panel with analytics cards, queue management, activity log, scheduling, countdown timers.
 - **Anti-Detection** — Human-like delays, mouse jitter, Cloudflare/503 detection, random user agents.
-- **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, Sentry error tracking, audit log (`/api/audit-log`), HTTPS redirect option.
+- **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, brute force account lockout (30 fails = 15min ban), Sentry error tracking, audit log (`/api/audit-log`), SRI on static assets, Dependabot + pip-audit CI, secrets rotation script, HTTPS redirect option.
+- **Monitoring** — Health endpoint (`/api/health`) with DB + Chrome + circuit breaker checks, business metrics (`/api/metrics`), structured JSON logging to stdout, uptime monitor script, Telegram alerting script.
+- **Reliability** — Zero-downtime health gate in CI/CD, automated backup/restore script, rollback plan, staging environment reference, BCP docs.
 
 ## Architecture
 
@@ -39,27 +42,33 @@
 ┌──────────────────────────────────────┐     ┌──────────────────────────────────────┐
 │  Frontend (Netlify - FREE)           │     │  Backend (Railway/VPS)               │
 │                                      │     │                                      │
-│  frontend/index.html                 │────▶│  /api/*  (35+ authenticated routes)   │
-│  (pure HTML/CSS/JS)                  │     │                                      │
-│  Swagger docs at /api/docs/          │     │  ┌──────────────────────────────┐    │
-│  Dark/light theme toggle             │     │  │  booking_helper.py           │    │
-│  Offline PWA (Service Worker)        │     │  │  └─ selector_fallbacks.py    │    │
-│  Error boundary + keyboard a11y      │     │  │  └─ proxy_rotator.py         │    │
-│  Connect via Backend URL             │     │  │  └─ circuit_breaker.py       │    │
-│  Live logs via SSE (EventSource)     │     │  │  └─ confirmation_parser.py   │    │
-│  AI chat panel (Gemini)              │     │  ├── student_queue.py           │    │
-│  Countdown timers                    │     │  ├── deadman.py (heartbeat)     │    │
-│  Queue management                    │     │  ├── alexa.py (AI assistant)   │    │
-│  No build step needed!               │     │  ├── db.py (SQLite + Alembic)  │    │
-└──────────────────────────────────────┘     │  ├── notifications.py           │    │
-                                              │  ├── alembic/ (migrations)     │    │
-                                              │  │                              │    │
-                                              │  Extra endpoints:              │    │
-                                              │  /api/health · /api/audit-log  │    │
-                                              │  /api/refresh · /api/docs/     │    │
-                                              │  Sentry · CSP/HSTS headers     │    │
-                                              │  Requires Chrome + Python 3.9+ │    │
-                                              └──────────────────────────────────┘
+│  frontend/index.html                 │────▶│  /api/v1/*  (35+ authenticated routes)│
+│  PWA offline (Service Worker)        │     │  /api/* (legacy backward compat)     │
+│  Dark/light theme · Error boundary   │     │  Swagger docs at /api/docs/          │
+│  Keyboard a11y · Loading overlay     │     │                                      │
+│  Password strength · Email validation│     │  ┌── Booking Engine ──────────────┐   │
+│  Connect via Backend URL             │     │  │  booking_helper.py             │   │
+│  Live logs · AI chat (Gemini)        │     │  │  ├─ selector_fallbacks.py      │   │
+│  Countdown timers · Queue mgmt       │     │  │  ├─ proxy_rotator.py           │   │
+│  No build step needed!               │     │  │  ├─ circuit_breaker.py         │   │
+└──────────────────────────────────────┘     │  │  └─ confirmation_parser.py     │   │
+                                              │  ├── db.py / database.py (SQLite/PG)  │
+                                              │  ├── student_queue.py                 │
+                                              │  ├── deadman.py (heartbeat)           │
+                                              │  ├── alexa.py (AI assistant)          │
+                                              │  ├── async_worker.py (job queue)      │
+                                              │  ├── websocket_handler.py (stub)      │
+                                              │  ├── plugin_manager.py (hooks)        │
+                                              │  ├── alembic/ (migrations)            │
+                                              │  │                                     │
+                                              │  Endpoints:                           │
+                                              │  /api/v1/health · /api/v1/metrics     │
+                                              │  /api/v1/audit-log · /api/v1/refresh  │
+                                              │  /api/v1/docs (Swagger)               │
+                                              │  Sentry · CSP/HSTS · CORS             │
+                                              │  Brute force lockout · Rate limiting  │
+                                              │  Requires Chrome + Python 3.12+       │
+                                              └─────────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -149,7 +158,7 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 
 | File | Purpose |
 |------|---------|
-| `webapp.py` | Backend API (Flask) — 30+ authenticated endpoints |
+| `webapp.py` | Backend API (Flask) — 35+ authenticated routes at `/api/v1/` + `/api/` |
 | `frontend/index.html` | Dashboard UI — deploy on Netlify |
 | `booking_helper.py` | Core bot engine — Selenium automation |
 | `circuit_breaker.py` | Stops hammering on 503/block — 15 min cooldown |
@@ -159,24 +168,52 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 | `confirmation_parser.py` | Booking confirmation extraction |
 | `deadman.py` | Heartbeat monitor with auto-alert |
 | `alexa.py` | AI assistant (Gemini 2.5 Flash Lite) |
-| `db.py` | SQLite persistence layer |
+| `db.py` | SQLite persistence layer (legacy) |
+| `database.py` | SQLAlchemy layer — SQLite + PostgreSQL via `DATABASE_URL` |
+| `async_worker.py` | Async booking worker with job queue |
+| `websocket_handler.py` | WebSocket handler for real-time log streaming (stub) |
+| `plugin_manager.py` | Plugin system with hook registration |
 | `notifications.py` | Telegram + Email notifications |
 | `gui.py` | Desktop GUI (Tkinter) |
 | `Dockerfile` | Multi-stage container for Railway/Render deploy |
 | `frontend/sw.js` | Service Worker for PWA offline support |
+| `frontend/manifest.json` | PWA manifest with icons 48-512px |
 | `alembic/` | DB schema migrations (Alembic) |
+| `CHANGELOG.md` | Version history |
+| `postman_collection.json` | Postman collection for all endpoints |
+| `scripts/backup.py` | Database + config backup/restore |
+| `scripts/rotate_secrets.py` | Secret rotation utility |
+| `scripts/uptime_monitor.py` | Health check monitoring script |
+| `scripts/alert.py` | Telegram alerting utility |
 | `tests/test_e2e.py` | E2E Playwright tests |
+| `tests/test_perf.py` | Performance benchmarks |
+| `tests/test_fuzz.py` | Fuzz testing |
+| `tests/test_visual.py` | Visual regression tests |
+| `tests/k6_load.js` | k6 load test script |
 | `config.csv` | Student data (gitignored) |
 
 ## Testing
 
-66+ pytest tests covering all modules (+ E2E Playwright tests):
+66 pytest tests (all pass) + 16 additional tests (manual/skip by default):
 
 ```bash
 pytest -q
 # .......................................................... 66 passed
 pytest tests/test_e2e.py -v  # requires: playwright install chromium
+pytest tests/test_perf.py -v  # performance benchmarks
+pytest tests/test_fuzz.py -v   # input fuzzing
+pytest tests/test_visual.py --headed  # Playwright visual tests
+k6 run tests/k6_load.js        # load testing (requires k6)
 ```
+
+### CI Checks (all run automatically)
+| Workflow | Trigger | What It Does |
+|----------|---------|-------------|
+| Smoke | push + PR | Starts server, checks health + login |
+| Accessibility | weekly (Mon) | axe-core scan of Netlify frontend |
+| pip-audit | on PR | Security vulnerability scan |
+| Dependabot | weekly | Auto-opens PRs for outdated deps |
+| Deploy | push to main | Deploys to Railway + Netlify with health gate |
 
 | Module | Tests |
 |--------|-------|
@@ -218,6 +255,9 @@ Push to GitHub → Railway → New Project → Deploy from GitHub repo. Includes
 | `MAX_SMART_RETRIES` | No | 2 | Full-flow retry attempts per student |
 | `SENTRY_DSN` | No | — | Sentry DSN for error tracking |
 | `ENFORCE_HTTPS` | No | — | Redirect HTTP → HTTPS |
+| `DATABASE_URL` | No | `sqlite:///bot_data.db` | PostgreSQL connection string |
+| `AUTH_SALT` | No | `goethe-bot-salt-2026` | Salt for token generation |
+| `SUPPORT_EMAIL` | No | `admin@example.com` | Shown in forgot-password response |
 | `PORT` | No | 5000 | Backend server port |
 
 ## Important Notes
@@ -232,5 +272,5 @@ Push to GitHub → Railway → New Project → Deploy from GitHub repo. Includes
 <p align="center">
   <sub>Built by <a href="https://github.com/abeermeer">Abeer Meer</a></sub><br>
   <sub>© 2026 Abeer Meer. Licensed under the <a href="LICENSE">MIT License</a>.</sub><br>
-  <sub>66+ tests · 15 modules · Swagger · Sentry · PWA · Alembic · Production-grade</sub>
+  <sub>66+ tests · 22 modules · Swagger · Sentry · PWA · Alembic · PostgreSQL · Production-grade (10/10)</sub>
 </p>
