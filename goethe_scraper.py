@@ -21,6 +21,12 @@ MONTHS = {
     "juli": 7, "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12,
 }
 
+PRICE_MAP = {
+    "A1": {"price_full": "PKR 25,000", "price_reduced": "PKR 16,500"},
+    "A2": {"price_full": "PKR 25,000", "price_reduced": "PKR 16,500"},
+    "B1": {"price_full": "PKR 30,000", "price_reduced": "PKR 25,000"},
+}
+
 CITY_PATTERNS = [
     ("Karachi", r'Goethe-Institut\s+Karachi'),
     ("Lahore", r'Annemarie-Schimmel-Haus.*?Lahore'),
@@ -35,6 +41,8 @@ class ExamEntry:
     exam_date: str
     reg_open: str
     reg_open_time: str = ""
+    price_full: str = ""
+    price_reduced: str = ""
     url: str = GOETHE_URL
 
 
@@ -121,12 +129,15 @@ def _parse_schedule(html: str) -> List[ExamEntry]:
             parsed_levels = re.findall(r'[A-C]\d', levels_str.upper())
             for lv in parsed_levels:
                 if lv in levels_of_interest:
+                    prices = PRICE_MAP.get(lv, {})
                     entries.append(ExamEntry(
                         level=lv,
                         city=current_city,
                         exam_date=exam_date,
                         reg_open=reg_date,
                         reg_open_time=reg_time,
+                        price_full=prices.get("price_full", ""),
+                        price_reduced=prices.get("price_reduced", ""),
                     ))
 
     seen = set()

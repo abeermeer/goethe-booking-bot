@@ -96,6 +96,13 @@
 
 - **Used same email for all 3 CSV entries** — Goethe may require separate accounts, but user explicitly confirmed this is fine for testing.
 
+## Prices added to Goethe Exam Schedule
+
+- Added `price_full` / `price_reduced` fields to `ExamEntry` dataclass in scraper
+- Prices mapped by level: A1/A2 = PKR 25,000 / PKR 16,500, B1 = PKR 30,000 / PKR 25,000
+- Frontend `refreshSchedule()` now displays prices below each exam entry
+- Prices are fetched live alongside schedule data from `/api/goethe-schedule`
+
 ## Git History (this session)
 
 ```
@@ -104,6 +111,7 @@ ec38293 fix(goethe_scraper): rewrite parser — 26 entries across 3 cities (was 
 7de2508 feat(live-status): full log view with date picker
 de494c0 docs: update session summary with validation fix + live log view + date picker
 313420d docs: add key decisions (page load time, bot comparison) to session summary
+6b8ccdc docs: update session summary — config fix, booking check results, Karachi June 19
 ```
 
 ## Files Modified
