@@ -163,3 +163,15 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 ### What Changed
 - `goethe_scraper.py` — Added docstring explaining live price scraping limitation
 - `SESSION_SUMMARY.md` — Updated with full investigation
+
+---
+
+## Session 17 — June 18, 2026 — Railway Deployment Clarification
+
+### Confirmed
+- Railway **paid plan + custom domain** keeps the bot running **24/7** on cloud servers
+- Laptop can be turned off — bot continues running on Railway's infrastructure
+- No idle sleep or downtime (unlike free tier which hibernates after inactivity)
+
+### Git
+- `12f7536` committed & pushed to `abeermeer/goethe-booking-bot`
