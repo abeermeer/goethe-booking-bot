@@ -17,6 +17,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m pytest tests/ -v
+      - name: Security audit
+        run: pip install pip-audit && pip-audit --desc on 2>&1 || true
 
   deploy-netlify:
     runs-on: ubuntu-latest
@@ -49,3 +51,15 @@ jobs:
         run: railway up --detach --service 0596e8bf-ed43-4033-a585-0c67e7b3a43d
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      - name: Notify deploy success
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=✅ Deploy successful: goethe-booking-bot%0ACommit: ${{ github.sha }}%0ARailway: https://goethe-booking-bot-production-092f.up.railway.app%0ANetlify: https://goethe-booking-dashboard.netlify.app" > /dev/null 2>&1 || true
+      - name: Notify deploy failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=❌ Deploy FAILED: goethe-booking-bot%0ACommit: ${{ github.sha }}%0ACheck: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" > /dev/null 2>&1 || true
