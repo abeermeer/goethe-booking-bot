@@ -34,8 +34,34 @@
     --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
     --glass-border: rgba(255,255,255,0.04);
     --glass-highlight: rgba(255,255,255,0.02);
+    --auth-bg: linear-gradient(135deg, #07070d, #0d0d1a);
   }
+  [data-theme="light"] {
+    --bg: #f5f5fa;
+    --surface: rgba(255,255,255,0.8);
+    --surface2: rgba(240,240,248,0.7);
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.12);
+    --text: #1a1a2e;
+    --text2: #5a5a72;
+    --text3: #8a8a9e;
+    --accent: #3366ff;
+    --accent-hover: #2952cc;
+    --accent-glow: rgba(51,102,255,0.12);
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --glass-border: rgba(255,255,255,0.5);
+    --glass-highlight: rgba(255,255,255,0.4);
+    --auth-bg: linear-gradient(135deg, #e8ecf4, #f0f2f8);
+  }
+  #errorBoundary { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; gap: 16px; padding: 24px; text-align: center; }
+  #errorBoundary.visible { display: flex; }
+  #errorBoundary h2 { font-size: 20px; color: var(--red); }
+  #errorBoundary p { color: var(--text2); max-width: 480px; font-size: 13px; }
+  #errorBoundary button { padding: 10px 24px; border-radius: var(--radius-sm); border: none; background: var(--accent); color: #fff; cursor: pointer; font-weight: 600; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
   body {
     font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg); color: var(--text); min-height: 100vh;
@@ -787,6 +813,12 @@
         </div>
         <div id="configInfo" style="font-size:13px;color:var(--text2);"></div>
         <div id="configPreview" class="cfg-preview"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text2);">Theme</span>
+          <label class="toggle"><input type="checkbox" id="themeToggle" onchange="toggleTheme(event.target.checked)"><span class="slider"></span></label>
+          <span class="toggle-label" id="themeLabel">Dark</span>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('themeToggle').click()" aria-label="Toggle theme" style="margin-left:auto;font-size:11px;">Keyboard: <kbd style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:inherit;">T</kbd></button>
+        </div>
       </div>
 
       <div class="section-title">Notifications</div>
@@ -1549,6 +1581,39 @@ function startCountdown(students) {
   countdownTimer = setInterval(updateCountdown, 1000);
 }
 
+// ── Error boundary ──
+window.onerror = function(msg, url, line, col, err) {
+  const el = document.getElementById("errorBoundary");
+  if (!el) return;
+  const msgEl = document.getElementById("errorMsg");
+  if (msgEl) msgEl.textContent = msg + (err && err.stack ? " " + err.stack.split("\n")[0] : "");
+  el.classList.add("visible");
+  return true;
+};
+window.addEventListener("unhandledrejection", function(e) {
+  const el = document.getElementById("errorBoundary");
+  if (!el) return;
+  const msgEl = document.getElementById("errorMsg");
+  if (msgEl) msgEl.textContent = "Unhandled Promise rejection: " + (e.reason ? e.reason.message || e.reason : "Unknown");
+  el.classList.add("visible");
+});
+
+// ── Theme toggle ──
+(function initTheme() {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+    document.getElementById("themeLabel").textContent = "Light";
+  }
+  const cb = document.getElementById("themeToggle");
+  if (cb) cb.checked = saved === "light";
+})();
+function toggleTheme(isLight) {
+  document.documentElement.setAttribute("data-theme", isLight ? "light" : "dark");
+  localStorage.setItem("theme", isLight ? "light" : "dark");
+  document.getElementById("themeLabel").textContent = isLight ? "Light" : "Dark";
+}
+
 // ── Keyboard shortcuts ──
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
@@ -1571,6 +1636,12 @@ document.addEventListener("keydown", e => {
     const search = document.getElementById("studentSearch");
     if (search) { e.preventDefault(); search.focus(); }
   }
+  if (e.key === "t" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const target = e.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+    const cb = document.getElementById("themeToggle");
+    if (cb) { cb.checked = !cb.checked; toggleTheme(cb.checked); }
+  }
 });
 
 // ── Helpers ──
@@ -1582,5 +1653,10 @@ function escHtml(s) {
 }
 </script>
 <div class="toast-container" id="toastContainer"></div>
+<div id="errorBoundary" role="alertdialog" aria-labelledby="errorTitle">
+  <h2 id="errorTitle">Something went wrong</h2>
+  <p id="errorMsg">An unexpected error occurred. The dashboard needs to reload.</p>
+  <button onclick="location.reload()" aria-label="Reload dashboard">Reload Dashboard</button>
+</div>
 </body>
 </html>
