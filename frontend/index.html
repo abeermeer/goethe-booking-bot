@@ -100,7 +100,8 @@
   .grid { display: grid; gap: 14px; }
   .grid-2 { grid-template-columns: 1fr 1fr; }
   .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-  @media (max-width:900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  @media (max-width:900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
 
   .card {
     background: var(--surface); border: 1px solid var(--glass-border); border-radius: var(--radius);
@@ -636,7 +637,7 @@
     .card { padding: 14px; }
     .topbar { gap: 8px; }
     .topbar-left h2 { font-size: 15px; }
-    .grid-3 { grid-template-columns: 1fr; }
+    .grid-3, .grid-4 { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -767,6 +768,12 @@
       <div class="actions-bar fade-up fade-up-d1">
         <button id="btnStart" class="btn btn-primary" onclick="startBot()">Start Bot</button>
         <button id="btnStop" class="btn btn-danger" disabled onclick="stopBot()">Stop</button>
+        <select id="examLevel" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;outline:none;cursor:pointer;">
+          <option value="">All Levels</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+        </select>
         <div class="mode-toggle">
           <button id="modeNow" class="active" onclick="setMode('now')">Run Now</button>
           <button id="modeLater" onclick="setMode('later')">Schedule</button>
@@ -789,6 +796,23 @@
         <div class="card fade-up fade-up-d3"><div class="card-hd"><h3>Queue</h3></div><div id="analyticsQueue" style="font-size:28px;font-weight:700;color:var(--accent);">—</div></div>
       </div>
 
+      <div class="section-title fade-up" style="margin:20px 0 10px;">
+        Live Booking Status
+        <span id="liveStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text3);margin-left:6px;"></span>
+      </div>
+      <div id="liveCards" class="grid grid-4" style="margin-bottom:14px;">
+        <div class="card"><div class="card-hd"><h3>Total</h3></div><div id="liveTotal" style="font-size:28px;font-weight:700;">—</div></div>
+        <div class="card"><div class="card-hd"><h3>Booked</h3></div><div id="liveBooked" style="font-size:28px;font-weight:700;color:var(--green);">—</div></div>
+        <div class="card"><div class="card-hd"><h3>Failed</h3></div><div id="liveFailed" style="font-size:28px;font-weight:700;color:var(--red);">—</div></div>
+        <div class="card"><div class="card-hd"><h3>Pending</h3></div><div id="livePending" style="font-size:28px;font-weight:700;color:var(--accent);">—</div></div>
+      </div>
+      <div id="liveTableWrap" class="card" style="margin-bottom:14px;display:none;">
+        <table class="res-table">
+          <thead><tr><th>Student</th><th>Level</th><th>City</th><th>Status</th><th>Updated</th></tr></thead>
+          <tbody id="liveTableBody"></tbody>
+        </table>
+      </div>
+
       <div class="section-title fade-up fade-up-d3" style="margin:20px 0 10px;">Students</div>
       <div id="studentGrid" class="student-grid">
         <div class="skeleton skel-student" style="grid-column:1/2;"></div>
@@ -799,7 +823,10 @@
       <div class="section-title fade-up fade-up-d4" style="margin:20px 0 10px;">Activity Log</div>
       <div class="log-box fade-up fade-up-d4" id="logBox"><div class="skeleton skel-card"></div></div>
 
-      <div class="section-title fade-up fade-up-d5" style="margin:20px 0 10px;">Exam Schedule 2026</div>
+      <div class="section-title fade-up fade-up-d5" style="margin:20px 0 10px;">
+        Goethe Exam Schedule
+        <button class="btn btn-outline btn-sm" onclick="refreshSchedule()" style="margin-left:auto;font-size:11px;">Refresh</button>
+      </div>
       <div class="card fade-up fade-up-d5">
         <div id="scheduleBody" style="font-size:12px;color:var(--text2);padding:8px 0;">
           <div class="skeleton skel-line wide"></div>
@@ -1043,7 +1070,7 @@ async function connectBackend(retries = 2) {
       statusEl.className = "status-text ok";
       updateBadge(false);
       await loadConfigFromBackend();
-      await loadSchedule();
+      await refreshSchedule();
       await loadScheduleStatus();
       startStatusPoll();
       return;
@@ -1217,12 +1244,14 @@ async function startBot() {
   }
 
   // Run now mode
+  const level = document.getElementById("examLevel").value;
   const body = {
     headless: document.getElementById("headlessMode").checked,
     immediate: true,
     telegram_token: document.getElementById("tgToken").value.trim(),
     telegram_chat_id: document.getElementById("tgChatId").value.trim(),
   };
+  if (level) body.level = level;
   try {
     const resp = await apiFetch(`${BASE}/api/start`, {
       method: "POST", headers: {"Content-Type": "application/json"},
@@ -1235,6 +1264,7 @@ async function startBot() {
     document.getElementById("resultsCard").style.display = "none";
     document.getElementById("resultsEmpty").style.display = "";
     startSSE();
+    startLivePoll();
     showToast("Bot started", "success");
   } catch (e) { showToast("Failed: " + e.message, "error"); }
 }
@@ -1244,6 +1274,7 @@ async function stopBot() {
   try {
     await apiFetch(`${BASE}/api/stop`, { method: "POST", signal: AbortSignal.timeout(5000), _loading: "Stopping bot..." });
     closeSSE();
+    stopLivePoll();
     setTimeout(loadResults, 2000);
     showToast("Bot stopped", "info");
   } catch (e) { showToast("Stop failed: " + e.message, "error"); }
@@ -1324,6 +1355,77 @@ async function loadSchedule() {
     }
     document.getElementById("scheduleBody").innerHTML = html;
   } catch { document.getElementById("scheduleBody").innerHTML = '<span style="color:var(--red);">Failed</span>'; }
+}
+
+// ── Live Status Polling ──
+let livePollTimer = null;
+
+function startLivePoll() {
+  stopLivePoll();
+  document.getElementById("liveStatusDot").style.background = "var(--green)";
+  livePollTimer = setInterval(pollLiveStatus, 2000);
+  pollLiveStatus();
+}
+
+function stopLivePoll() {
+  if (livePollTimer) { clearInterval(livePollTimer); livePollTimer = null; }
+  document.getElementById("liveStatusDot").style.background = "var(--text3)";
+}
+
+async function pollLiveStatus() {
+  try {
+    const resp = await apiFetch(`${BASE}/api/live-status`, { signal: AbortSignal.timeout(3000) });
+    const data = await resp.json();
+    if (!data || !data.summary) return;
+    const s = data.summary;
+    document.getElementById("liveTotal").textContent = s.total;
+    document.getElementById("liveBooked").textContent = s.booked;
+    document.getElementById("liveFailed").textContent = s.failed;
+    document.getElementById("livePending").textContent = s.pending;
+    const tbody = document.getElementById("liveTableBody");
+    const wrap = document.getElementById("liveTableWrap");
+    if (data.students && data.students.length) {
+      wrap.style.display = "";
+      tbody.innerHTML = data.students.map(st => {
+        let color;
+        if (st.status === "confirmed" || st.status === "submitted") color = "var(--green)";
+        else if (st.status === "failed") color = "var(--red)";
+        else color = "var(--accent)";
+        return `<tr><td>${escHtml(st.name)}</td><td><span class="exam-tag exam-${st.level[0]}">${escHtml(st.level)}</span></td><td>${escHtml(st.city)}</td><td><span style="color:${color};font-weight:500;">${escHtml(st.status)}</span></td><td style="font-size:11px;color:var(--text3);">${escHtml(st.updated_at)}</td></tr>`;
+      }).join("");
+    } else {
+      wrap.style.display = "none";
+    }
+  } catch { /* ignore */ }
+}
+
+// ── Goethe Schedule ──
+async function refreshSchedule() {
+  document.getElementById("scheduleBody").innerHTML = '<div style="color:var(--text3);">Loading...</div>';
+  try {
+    const resp = await apiFetch(`${BASE}/api/goethe-schedule`, { signal: AbortSignal.timeout(15000) });
+    const data = await resp.json();
+    if (!data.ok || !data.data.length) {
+      document.getElementById("scheduleBody").innerHTML = '<span style="color:var(--text3);">No schedule data</span>'; return;
+    }
+    const levels = ["A1","A2","B1"];
+    let html = "";
+    for (const lv of levels) {
+      const items = data.data.filter(s => s.level === lv);
+      if (!items.length) continue;
+      const accentVar = lv === "A1" ? "var(--accent)" : lv === "A2" ? "var(--green)" : "var(--yellow)";
+      html += `<div class="sched-group" style="margin-bottom:16px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:8px;height:8px;border-radius:50%;background:${accentVar};"></span><h4 style="font-size:14px;font-weight:600;color:var(--text);">Level ${lv}</h4></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">`;
+      for (const e of items) {
+        html += `<div style="background:var(--surface);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px;backdrop-filter:blur(12px);">`;
+        html += `<div style="font-weight:600;color:var(--text);margin-bottom:6px;">${escHtml(e.city)}</div>`;
+        html += `<div style="font-size:12px;color:var(--text2);">${escHtml(e.date)}</div>`;
+        if (e.fee) html += `<div style="font-size:12px;color:var(--text2);">Fee: ${escHtml(e.fee)}</div>`;
+        html += `</div>`;
+      }
+      html += `</div></div>`;
+    }
+    document.getElementById("scheduleBody").innerHTML = html || '<span style="color:var(--text3);">No schedule found</span>';
+  } catch { document.getElementById("scheduleBody").innerHTML = '<span style="color:var(--red);">Failed to load schedule</span>'; }
 }
 
 // ── Results ──

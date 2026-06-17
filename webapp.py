@@ -50,6 +50,7 @@ class StartRequest(BaseModel):
     immediate: bool = False
     telegram_token: str = ""
     telegram_chat_id: str = ""
+    level: str = ""
 
 class ScheduleStartRequest(BaseModel):
     datetime: str = Field(min_length=1)
@@ -102,6 +103,7 @@ if _db_url.startswith("postgresql://") or _db_url.startswith("postgres://"):
 else:
     import db
 import alexa
+import goethe_scraper
 import student_queue as sqmod
 from deadman import DeadManSwitch
 
@@ -596,6 +598,12 @@ def api_start(data: StartRequest):
     if not students:
         return jsonify({"ok": False, "error": "No students loaded. Load a config.csv first"}), 400
 
+    level_filter = data.level.strip().upper()
+    if level_filter:
+        students = [s for s in students if s.get("level", "").upper() == level_filter]
+        if not students:
+            return jsonify({"ok": False, "error": f"No students found for level {level_filter}"}), 400
+
     headless = data.headless
     if not headless and not os.environ.get("DISPLAY"):
         headless = True
@@ -664,6 +672,38 @@ def api_logs():
 @require_auth
 def api_results():
     return jsonify(student_results)
+
+
+@bp.route("/live-status")
+@require_auth
+def api_live_status():
+    students = db.get_students()
+    summary = {"total": 0, "booked": 0, "failed": 0, "pending": 0}
+    per_student = []
+    for s in students:
+        status = s.get("status", "pending")
+        if status in ("confirmed", "submitted"):
+            summary["booked"] += 1
+        elif status == "failed":
+            summary["failed"] += 1
+        else:
+            summary["pending"] += 1
+        summary["total"] += 1
+        per_student.append({
+            "name": s.get("name", "?"),
+            "level": s.get("level", "?"),
+            "city": s.get("city", "?"),
+            "status": status,
+            "updated_at": s.get("updated_at", ""),
+        })
+    return jsonify({"summary": summary, "students": per_student})
+
+
+@bp.route("/goethe-schedule")
+def api_goethe_schedule():
+    force = request.args.get("refresh", "").lower() == "1"
+    entries = goethe_scraper.get_schedule(force_refresh=force)
+    return jsonify({"ok": True, "data": goethe_scraper.to_dict(entries), "cached": not force})
 
 
 @bp.route("/heartbeat")
