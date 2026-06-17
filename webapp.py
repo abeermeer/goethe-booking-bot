@@ -34,7 +34,7 @@ from collections import defaultdict
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 import flask
-from flask import Flask, Response, jsonify, request
+from flask import Blueprint, Flask, Response, jsonify, request
 from flasgger import Swagger, swag_from
 
 PROJECT_DIR = Path(__file__).parent.absolute()
@@ -48,6 +48,8 @@ from deadman import DeadManSwitch
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
+
+bp = Blueprint("api", __name__)
 
 # ── Swagger / OpenAPI ──
 app.config["SWAGGER"] = {
@@ -317,7 +319,7 @@ def _check_rate_limit(ip: str) -> bool:
 
 # ── Auth routes ──
 
-@app.route("/api/login", methods=["POST"])
+@bp.route("/login", methods=["POST"])
 @swag_from({
     "tags": ["Auth"],
     "summary": "Admin login",
@@ -367,7 +369,7 @@ def api_login():
     return jsonify({"ok": False, "error": "Invalid email or password"}), 401
 
 
-@app.route("/api/forgot-password", methods=["POST"])
+@bp.route("/forgot-password", methods=["POST"])
 def api_forgot_password():
     data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
@@ -387,7 +389,7 @@ def require_auth(f):
     return decorated
 
 
-@app.route("/api/logout", methods=["POST"])
+@bp.route("/logout", methods=["POST"])
 @require_auth
 def api_logout():
     auth = request.headers.get("Authorization", "")
@@ -398,7 +400,7 @@ def api_logout():
     return jsonify({"ok": True})
 
 
-@app.route("/api/refresh", methods=["POST"])
+@bp.route("/refresh", methods=["POST"])
 @require_auth
 def api_refresh():
     auth = request.headers.get("Authorization", "")
@@ -424,7 +426,7 @@ def health():
     })
 
 
-@app.route("/api/status")
+@bp.route("/status")
 @require_auth
 def api_status():
     return jsonify({
@@ -445,7 +447,7 @@ def api_status():
     })
 
 
-@app.route("/api/config", methods=["GET"])
+@bp.route("/config", methods=["GET"])
 @require_auth
 def api_get_config():
     students = _get_loaded_students()
@@ -456,7 +458,7 @@ def api_get_config():
     })
 
 
-@app.route("/api/config/load", methods=["POST"])
+@bp.route("/config/load", methods=["POST"])
 @require_auth
 def api_load_config():
     global config_path
@@ -472,7 +474,7 @@ def api_load_config():
         return jsonify({"ok": False, "error": str(exc)}), 400
 
 
-@app.route("/api/config/upload", methods=["POST"])
+@bp.route("/config/upload", methods=["POST"])
 @require_auth
 def api_config_upload():
     global config_path
@@ -491,7 +493,7 @@ def api_config_upload():
         return jsonify({"ok": False, "error": str(exc)}), 400
 
 
-@app.route("/api/start", methods=["POST"])
+@bp.route("/start", methods=["POST"])
 @require_auth
 @swag_from({
     "tags": ["Bot"],
@@ -551,7 +553,7 @@ def api_start():
     return jsonify({"ok": True, "message": f"Started bot for {len(students)} student(s)"})
 
 
-@app.route("/api/stop", methods=["POST"])
+@bp.route("/stop", methods=["POST"])
 @require_auth
 def api_stop():
     if not bot_running:
@@ -561,7 +563,7 @@ def api_stop():
     return jsonify({"ok": True, "message": "Stop signal sent"})
 
 
-@app.route("/api/logs")
+@bp.route("/logs")
 def api_logs():
     # SSE needs token via query param (EventSource doesn't support custom headers)
     query_token = request.args.get("token", "")
@@ -584,13 +586,13 @@ def api_logs():
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-@app.route("/api/results")
+@bp.route("/results")
 @require_auth
 def api_results():
     return jsonify(student_results)
 
 
-@app.route("/api/heartbeat")
+@bp.route("/heartbeat")
 def api_heartbeat():
     deadman.ping()
     return jsonify({
@@ -599,7 +601,7 @@ def api_heartbeat():
         "alive": deadman.is_alive,
     })
 
-@app.route("/api/health")
+@bp.route("/health")
 @swag_from({
     "tags": ["System"],
     "summary": "Health check — DB, uptime, Chrome status",
@@ -631,14 +633,14 @@ def api_health():
         },
     })
 
-@app.route("/api/audit-log")
+@bp.route("/audit-log")
 @require_auth
 def api_audit_log():
     limit = request.args.get("limit", 100, type=int)
     return jsonify(db.get_audit_logs(limit=limit))
 
 
-@app.route("/api/schedule")
+@bp.route("/schedule")
 @require_auth
 def api_schedule():
     return jsonify(bot.get_schedule())
@@ -670,7 +672,7 @@ def scheduler_loop(target_iso: str):
                 bot_thread.start()
 
 
-@app.route("/api/schedule-start", methods=["POST"])
+@bp.route("/schedule-start", methods=["POST"])
 @require_auth
 def api_schedule_start():
     global scheduled_start, scheduler_thread, scheduler_stop
@@ -690,7 +692,7 @@ def api_schedule_start():
     return jsonify({"ok": True, "message": f"Scheduled for {dt_str}"})
 
 
-@app.route("/api/schedule-status")
+@bp.route("/schedule-status")
 @require_auth
 def api_schedule_status():
     return jsonify({
@@ -699,7 +701,7 @@ def api_schedule_status():
     })
 
 
-@app.route("/api/schedule-cancel", methods=["POST"])
+@bp.route("/schedule-cancel", methods=["POST"])
 @require_auth
 def api_schedule_cancel():
     global scheduled_start
@@ -710,7 +712,7 @@ def api_schedule_cancel():
 
 # ── Queue endpoints ──
 
-@app.route("/api/queue/enqueue", methods=["POST"])
+@bp.route("/queue/enqueue", methods=["POST"])
 @require_auth
 def api_queue_enqueue():
     data = request.get_json(silent=True) or {}
@@ -727,7 +729,7 @@ def api_queue_enqueue():
     return jsonify({"ok": True, "id": item_id})
 
 
-@app.route("/api/queue/enqueue-many", methods=["POST"])
+@bp.route("/queue/enqueue-many", methods=["POST"])
 @require_auth
 def api_queue_enqueue_many():
     data = request.get_json(silent=True) or {}
@@ -739,7 +741,7 @@ def api_queue_enqueue_many():
     return jsonify({"ok": True, "count": len(students)})
 
 
-@app.route("/api/queue/dequeue", methods=["POST"])
+@bp.route("/queue/dequeue", methods=["POST"])
 @require_auth
 def api_queue_dequeue():
     item = student_queue.dequeue()
@@ -748,7 +750,7 @@ def api_queue_dequeue():
     return jsonify({"ok": True, "item": dict(item)})
 
 
-@app.route("/api/queue/complete", methods=["POST"])
+@bp.route("/queue/complete", methods=["POST"])
 @require_auth
 def api_queue_complete():
     data = request.get_json(silent=True) or {}
@@ -759,7 +761,7 @@ def api_queue_complete():
     return jsonify({"ok": True})
 
 
-@app.route("/api/queue/fail", methods=["POST"])
+@bp.route("/queue/fail", methods=["POST"])
 @require_auth
 def api_queue_fail():
     data = request.get_json(silent=True) or {}
@@ -770,7 +772,7 @@ def api_queue_fail():
     return jsonify({"ok": True})
 
 
-@app.route("/api/queue/reset", methods=["POST"])
+@bp.route("/queue/reset", methods=["POST"])
 @require_auth
 def api_queue_reset():
     data = request.get_json(silent=True) or {}
@@ -781,7 +783,7 @@ def api_queue_reset():
     return jsonify({"ok": True})
 
 
-@app.route("/api/queue")
+@bp.route("/queue")
 @require_auth
 def api_queue_list():
     status = request.args.get("status")
@@ -792,7 +794,7 @@ def api_queue_list():
     return jsonify({"ok": True, "items": items, "summary": student_queue.summary()})
 
 
-@app.route("/api/queue/clear", methods=["POST"])
+@bp.route("/queue/clear", methods=["POST"])
 @require_auth
 def api_queue_clear():
     student_queue.clear()
@@ -801,13 +803,13 @@ def api_queue_clear():
 
 # ── Database-backed endpoints ──
 
-@app.route("/api/db/students")
+@bp.route("/db/students")
 @require_auth
 def api_db_students():
     return jsonify(db.get_students())
 
 
-@app.route("/api/db/logs")
+@bp.route("/db/logs")
 @require_auth
 def api_db_logs():
     student_key = request.args.get("student_key", "")
@@ -866,7 +868,7 @@ else:
     alexa_assistant = None
 
 
-@app.route("/api/chat", methods=["POST"])
+@bp.route("/chat", methods=["POST"])
 @require_auth
 def api_chat():
     if not alexa_assistant:
@@ -881,6 +883,10 @@ def api_chat():
         return jsonify({"ok": True, "reply": reply})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+app.register_blueprint(bp, url_prefix="/api", name="api")
+app.register_blueprint(bp, url_prefix="/api/v1", name="api_v1")
 
 
 def main():
