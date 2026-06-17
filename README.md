@@ -163,7 +163,7 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 |------|---------|
 | `webapp.py` | Backend API (Flask) — 35+ authenticated routes at `/api/v1/` + `/api/` |
 | `frontend/index.html` | Dashboard UI — deploy on Netlify |
-| `goethe_scraper.py` | Live exam schedule scraper — parses goethe.de for exam dates & reg openings across Karachi, Lahore, Islamabad |
+| `goethe_scraper.py` | Live exam schedule scraper — parses goethe.de for exam dates, reg openings & prices (A1/B1) across Karachi, Lahore, Islamabad. Prices are JS-rendered, uses maintained PRICE_MAP |
 | `booking_helper.py` | Core bot engine — Selenium automation |
 | `circuit_breaker.py` | Stops hammering on 503/block — 15 min cooldown |
 | `selector_fallbacks.py` | 16 element types with DOM fallback chain |
