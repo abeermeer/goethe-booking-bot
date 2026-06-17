@@ -1,0 +1,245 @@
+{
+  "info": {
+    "name": "Goethe Booking Bot API",
+    "description": "Automated exam booking backend for Goethe-Institut Pakistan\n\nBase URL: https://goethe-booking-bot-production-092f.up.railway.app/api/v1\nAuth: Bearer token from /login",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://goethe-booking-bot-production-092f.up.railway.app/api/v1" },
+    { "key": "email", "value": "hamzarafiq655@gmail.com" },
+    { "key": "password", "value": "Hamza@123" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": ["var jsonData = pm.response.json();", "if (jsonData.ok) {", "  pm.collectionVariables.set('token', jsonData.token);", "}"],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/refresh", "host": ["{{base_url}}"], "path": ["refresh"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bot Control",
+      "item": [
+        {
+          "name": "Start Bot",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"students\": [{\"student_id\": \"S001\", \"name\": \"Test Student\"}],\n  \"headless\": true,\n  \"immediate\": false\n}" },
+            "url": { "raw": "{{base_url}}/start", "host": ["{{base_url}}"], "path": ["start"] }
+          }
+        },
+        {
+          "name": "Stop Bot",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/stop", "host": ["{{base_url}}"], "path": ["stop"] }
+          }
+        },
+        {
+          "name": "Bot Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/status", "host": ["{{base_url}}"], "path": ["status"] }
+          }
+        },
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Scheduling",
+      "item": [
+        {
+          "name": "Schedule Start",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"datetime\": \"2026-07-17T09:00:00\",\n  \"students\": [{\"student_id\": \"S001\", \"name\": \"Test Student\"}]\n}" },
+            "url": { "raw": "{{base_url}}/schedule-start", "host": ["{{base_url}}"], "path": ["schedule-start"] }
+          }
+        },
+        {
+          "name": "Schedule Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/schedule-status", "host": ["{{base_url}}"], "path": ["schedule-status"] }
+          }
+        },
+        {
+          "name": "Cancel Schedule",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/schedule-cancel", "host": ["{{base_url}}"], "path": ["schedule-cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue",
+      "item": [
+        {
+          "name": "Enqueue",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test Student\",\n  \"email\": \"student@example.com\",\n  \"level\": \"A2\",\n  \"city\": \"Karachi\",\n  \"priority\": 0\n}" },
+            "url": { "raw": "{{base_url}}/queue/enqueue", "host": ["{{base_url}}"], "path": ["queue", "enqueue"] }
+          }
+        },
+        {
+          "name": "Enqueue Many",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"students\": [\n    {\"student_id\": \"S001\", \"name\": \"Alice\"},\n    {\"student_id\": \"S002\", \"name\": \"Bob\"}\n  ],\n  \"priority\": 0\n}" },
+            "url": { "raw": "{{base_url}}/queue/enqueue-many", "host": ["{{base_url}}"], "path": ["queue", "enqueue-many"] }
+          }
+        },
+        {
+          "name": "Dequeue",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/queue/dequeue", "host": ["{{base_url}}"], "path": ["queue", "dequeue"] }
+          }
+        },
+        {
+          "name": "Complete",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"id\": \"item-id-here\",\n  \"result\": {\"status\": \"success\"}\n}" },
+            "url": { "raw": "{{base_url}}/queue/complete", "host": ["{{base_url}}"], "path": ["queue", "complete"] }
+          }
+        },
+        {
+          "name": "Fail",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"id\": \"item-id-here\"\n}" },
+            "url": { "raw": "{{base_url}}/queue/fail", "host": ["{{base_url}}"], "path": ["queue", "fail"] }
+          }
+        },
+        {
+          "name": "Queue Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/queue", "host": ["{{base_url}}"], "path": ["queue"] }
+          }
+        },
+        {
+          "name": "Clear Queue",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/queue/clear", "host": ["{{base_url}}"], "path": ["queue", "clear"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data & Logs",
+      "item": [
+        {
+          "name": "Students",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/db/students", "host": ["{{base_url}}"], "path": ["db", "students"] } }
+        },
+        {
+          "name": "Results",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/results", "host": ["{{base_url}}"], "path": ["results"] } }
+        },
+        {
+          "name": "Logs",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/logs", "host": ["{{base_url}}"], "path": ["logs"] } }
+        },
+        {
+          "name": "DB Logs",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/db/logs", "host": ["{{base_url}}"], "path": ["db", "logs"] } }
+        },
+        {
+          "name": "Audit Log",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/audit-log", "host": ["{{base_url}}"], "path": ["audit-log"] } }
+        }
+      ]
+    },
+    {
+      "name": "Config",
+      "item": [
+        {
+          "name": "Get Config",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/config", "host": ["{{base_url}}"], "path": ["config"] } }
+        },
+        {
+          "name": "Upload Config",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "multipart/form-data" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "/path/to/config.csv" }] },
+            "url": { "raw": "{{base_url}}/config/upload", "host": ["{{base_url}}"], "path": ["config", "upload"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other",
+      "item": [
+        {
+          "name": "Heartbeat",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/heartbeat", "host": ["{{base_url}}"], "path": ["heartbeat"] } }
+        },
+        {
+          "name": "Swagger Docs",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/../../docs", "host": ["{{base_url}}"], "path": ["..", "..", "docs"] } }
+        },
+        {
+          "name": "Chat (Alexa)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"message\": \"When is my exam?\"\n}" },
+            "url": { "raw": "{{base_url}}/chat", "host": ["{{base_url}}"], "path": ["chat"] }
+          }
+        }
+      ]
+    }
+  ]
+}
