@@ -70,6 +70,32 @@
 - **Bot vs Human at peak traffic:** Bot's advantage is in refresh frequency (2-3s vs 10-30s manual) and click speed (~50ms vs 500ms+ human). During page load itself, both wait the same. But bot never misses a cycle.
 - **Bot vs other GitHub Goethe bots:** This project is significantly more advanced — 38 modules, circuit breaker, selector fallbacks, proxy rotation, parallel students, dashboard, AI assistant, 66 tests, CI/CD. Most GitHub bots are single-file weekend projects.
 
+## config.csv — Created & Fixed
+
+- **Initial version:** A1 Lahore, A2 Karachi, B1 Lahore with past June 5 dates
+- **Problem:** A1/B1 Lahore reg_open (June 5) were already past → bot showed "Now" and retried endlessly with no Book Now buttons
+- **Fix:** All 3 changed to **Karachi**, reg_open **June 19**:
+  - Abeer Meer — A1 — Karachi — **19 Jun 10:23**
+  - Hamza — A2 — Karachi — **19 Jun 10:23**
+  - Yasin Butt — B1 — Karachi — **19 Jun 15:04**
+- Same email/password/DOB/address used for all 3 (testing only)
+
+## Booking Availability Check
+
+**Goal:** Verify if "Book Now" button exists for A1/B1 on live Goethe pages.
+
+**Process:**
+1. First attempt: `mein.goethe.de` — DNS failed (`net::ERR_NAME_NOT_RESOLVED`)
+2. Fixed URL: `https://www.goethe.de/services/cas/login/goethe/` → forwarded to `login.goethe.de/cas/login`
+3. Usercentrics cookie consent overlay blocked submit button
+4. Fixed: removed overlay via JS + used `driver.execute_script("arguments[0].click()", submit)` to bypass
+
+**Result (logged in):** Both A1 and B1 pages show the finder widget but **0 Book Now buttons** — no bookable slots. Confirmed dates (June 5 Lahore) were long fully booked.
+
+## Key Decision
+
+- **Used same email for all 3 CSV entries** — Goethe may require separate accounts, but user explicitly confirmed this is fine for testing.
+
 ## Git History (this session)
 
 ```
@@ -77,6 +103,7 @@ ec38293 fix(goethe_scraper): rewrite parser — 26 entries across 3 cities (was 
 55e284a fix(api): make students optional in StartRequest and ScheduleStartRequest
 7de2508 feat(live-status): full log view with date picker
 de494c0 docs: update session summary with validation fix + live log view + date picker
+313420d docs: add key decisions (page load time, bot comparison) to session summary
 ```
 
 ## Files Modified
@@ -89,3 +116,5 @@ de494c0 docs: update session summary with validation fix + live log view + date 
 | `database.py` | Added date filtering to get_logs() |
 | `README.md` | Added scraper to arch diagram + project files table |
 | `SESSION_SUMMARY.md` | Updated with all changes |
+| `scripts/check_buttons.py` | Created — login + booking availability checker |
+| `C:\Users\brosp\Downloads\config.csv` | Created & fixed — 3 students, Karachi, June 19 |
