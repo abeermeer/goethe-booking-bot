@@ -70,6 +70,14 @@ def init_db():
             finished_at TEXT,
             result_json TEXT
         );
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            email TEXT,
+            details TEXT,
+            ip TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
     """)
     conn.commit()
 
@@ -235,6 +243,21 @@ def clean_expired_sessions():
     conn = _get_conn()
     conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
     conn.commit()
+
+
+def add_audit_log(action: str, email: str = "", details: str = "", ip: str = ""):
+    conn = _get_conn()
+    conn.execute(
+        "INSERT INTO audit_log (action, email, details, ip) VALUES (?, ?, ?, ?)",
+        (action, email, details, ip),
+    )
+    conn.commit()
+
+
+def get_audit_logs(limit: int = 100) -> List[Dict]:
+    conn = _get_conn()
+    rows = conn.execute("SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    return [dict(r) for r in rows]
 
 
 init_db()

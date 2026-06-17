@@ -31,6 +31,8 @@ from typing import Dict, List, Optional
 
 from collections import defaultdict
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 import flask
 from flask import Flask, Response, jsonify, request
 
@@ -45,6 +47,16 @@ from deadman import DeadManSwitch
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
+
+# ── Sentry error tracking ──
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.5,
+        send_default_pii=False,
+    )
 
 # ── Allowed origins for CORS ──
 _ALLOWED_ORIGINS = {
@@ -292,7 +304,9 @@ def api_login():
     password = data.get("password", "")
     if hmac.compare_digest(email, AUTH_EMAIL.lower()) and hmac.compare_digest(password, AUTH_PASSWORD):
         token = _make_token(AUTH_EMAIL)
+        db.add_audit_log("login", email, "Successful login", ip)
         return jsonify({"ok": True, "token": token, "email": AUTH_EMAIL})
+    db.add_audit_log("login_failed", email, "Failed login attempt", ip)
     return jsonify({"ok": False, "error": "Invalid email or password"}), 401
 
 
@@ -323,7 +337,20 @@ def api_logout():
     token = auth.removeprefix("Bearer ").strip()
     if token:
         db.delete_session(token)
+        db.add_audit_log("logout", AUTH_EMAIL, "User logged out", request.remote_addr or "")
     return jsonify({"ok": True})
+
+
+@app.route("/api/refresh", methods=["POST"])
+@require_auth
+def api_refresh():
+    auth = request.headers.get("Authorization", "")
+    old_token = auth.removeprefix("Bearer ").strip()
+    if old_token:
+        db.delete_session(old_token)
+    new_token = _make_token(AUTH_EMAIL)
+    db.add_audit_log("token_refresh", AUTH_EMAIL, "Session token rotated", request.remote_addr or "")
+    return jsonify({"ok": True, "token": new_token})
 
 
 # ── Routes ──
@@ -443,6 +470,8 @@ def api_start():
         except queue.Empty:
             break
 
+    db.add_audit_log("bot_start", AUTH_EMAIL, f"Started bot for {len(students)} student(s), headless={headless}, immediate={immediate}", request.remote_addr or "")
+
     bot_thread = threading.Thread(target=run_students_web, args=(students, headless, immediate), daemon=True)
     bot_thread.start()
 
@@ -455,6 +484,7 @@ def api_stop():
     if not bot_running:
         return jsonify({"ok": False, "error": "Bot is not running"}), 400
     bot_stop_event.set()
+    db.add_audit_log("bot_stop", AUTH_EMAIL, "Stop signal sent by user", request.remote_addr or "")
     return jsonify({"ok": True, "message": "Stop signal sent"})
 
 
@@ -515,6 +545,13 @@ def api_health():
         },
         "version": "2.0.0",
     })
+
+@app.route("/api/audit-log")
+@require_auth
+def api_audit_log():
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(db.get_audit_logs(limit=limit))
+
 
 @app.route("/api/schedule")
 @require_auth
