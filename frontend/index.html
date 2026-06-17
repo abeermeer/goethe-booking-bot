@@ -734,11 +734,18 @@
         <input type="text" id="loginBackendUrl" placeholder="Backend URL (ex: https://railway...)" style="margin-bottom:10px;font-size:12px;">
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+          <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" oninput="validateEmailHint(this.value)">
+          <small id="emailHint" style="color:var(--red);font-size:11px;display:none;">Invalid email format</small>
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="loginPass" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          <input type="password" id="loginPass" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" oninput="passwordStrength(this.value)">
+          <div id="pwStrength" style="display:none;margin-top:6px;">
+            <div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden;">
+              <div id="pwBar" style="height:100%;width:0%;border-radius:2px;transition:all 0.3s;"></div>
+            </div>
+            <small id="pwLabel" style="font-size:10px;color:var(--text3);margin-top:2px;display:block;"></small>
+          </div>
         </div>
         <div id="loginError" class="login-error"></div>
         <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
@@ -949,7 +956,10 @@ function apiFetch(url, opts = {}) {
   const headers = opts.headers || {};
   if (authToken) headers["Authorization"] = "Bearer " + authToken;
   opts.headers = headers;
+  const loadingMsg = opts._loading;
+  if (loadingMsg) showLoading(true, loadingMsg);
   return fetch(url, opts).then(r => {
+    if (loadingMsg) showLoading(false);
     if (r.status === 401) {
       authToken = "";
       localStorage.removeItem("auth_token");
@@ -957,6 +967,9 @@ function apiFetch(url, opts = {}) {
       return Promise.reject(new Error("Unauthorized"));
     }
     return r;
+  }).catch(e => {
+    if (loadingMsg) showLoading(false);
+    throw e;
   });
 }
 
@@ -1157,7 +1170,7 @@ async function uploadConfig(event) {
     try {
       const resp = await apiFetch(`${BASE}/api/config/upload`, {
         method: "POST", headers: {"Content-Type": "text/plain"}, body: e.target.result,
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(10000), _loading: "Uploading config...",
       });
       const data = await resp.json();
       if (data.ok) {
@@ -1214,6 +1227,7 @@ async function startBot() {
     const resp = await apiFetch(`${BASE}/api/start`, {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body), signal: AbortSignal.timeout(10000),
+      _loading: "Starting bot...",
     });
     const data = await resp.json();
     if (!data.ok) return showToast("Error: " + data.error, "error");
@@ -1228,7 +1242,7 @@ async function startBot() {
 async function stopBot() {
   if (!connected) return;
   try {
-    await apiFetch(`${BASE}/api/stop`, { method: "POST", signal: AbortSignal.timeout(5000) });
+    await apiFetch(`${BASE}/api/stop`, { method: "POST", signal: AbortSignal.timeout(5000), _loading: "Stopping bot..." });
     closeSSE();
     setTimeout(loadResults, 2000);
     showToast("Bot stopped", "info");
@@ -1648,6 +1662,45 @@ document.addEventListener("keydown", e => {
     if (cb) { cb.checked = !cb.checked; toggleTheme(cb.checked); }
   }
 });
+
+// ── Form validation helpers ──
+function validateEmailHint(val) {
+  const el = document.getElementById("emailHint");
+  if (!val) { el.style.display = "none"; return; }
+  el.style.display = val.includes("@") && val.includes(".") ? "none" : "block";
+}
+function passwordStrength(pw) {
+  const container = document.getElementById("pwStrength");
+  const bar = document.getElementById("pwBar");
+  const label = document.getElementById("pwLabel");
+  if (!pw) { container.style.display = "none"; return; }
+  container.style.display = "block";
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const pct = (score / 5) * 100;
+  bar.style.width = pct + "%";
+  const colors = ["#f04a5a","#f04a5a","#f5a623","#2dd4a0","#2dd4a0","#2dd4a0"];
+  bar.style.background = colors[score];
+  const labels = ["","Very weak","Weak","Fair","Strong","Very strong"];
+  label.textContent = labels[score];
+}
+// ── Loading state helper ──
+let _loadingOverlay = null;
+function showLoading(show, msg) {
+  if (!_loadingOverlay) {
+    _loadingOverlay = document.createElement("div");
+    _loadingOverlay.id = "loadingOverlay";
+    _loadingOverlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;backdrop-filter:blur(4px);";
+    _loadingOverlay.innerHTML = '<div class="conn-spinner" style="width:32px;height:32px;border-width:3px;"></div><span style="color:var(--text);font-size:14px;" id="loadingMsg"></span>';
+    document.body.appendChild(_loadingOverlay);
+  }
+  _loadingOverlay.style.display = show ? "flex" : "none";
+  if (msg) document.getElementById("loadingMsg").textContent = msg;
+}
 
 // ── Helpers ──
 function escHtml(s) {
