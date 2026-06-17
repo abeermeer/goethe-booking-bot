@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.1] — 2026-06-18 — Price Scraping Investigation
+
+### Changed
+- `goethe_scraper.py` — Added docstring explaining that prices are JS-rendered and cannot be live-scraped without Playwright
+- `SESSION_SUMMARY.md` — Added full investigation findings (session 16)
+
+### Docs
+- Documented all checked exam pages (A1-C2), JS bundles, and third-party sources
+- Verdict: Live prices require Playwright or manual DevTools API capture
+
 ## [2.0.0] - 2026-06-18 — Security & Polish Release
 
 ### Added

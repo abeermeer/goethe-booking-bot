@@ -6,7 +6,7 @@ param(
     [string]$GitHubUser = ""
 )
 
-$projectDir = "C:\Users\brosp\AppData\Local\Temp\opencode\goethe-bot"
+$projectDir = "C:\Users\brosp\Downloads\goethe-bot"
 cd $projectDir
 
 Write-Host ""

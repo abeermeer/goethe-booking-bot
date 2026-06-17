@@ -1,6 +1,11 @@
-"""Scrape Goethe exam schedule from goethe.de for Pakistan cities.
+"""Scrape Goethe exam schedule + prices from goethe.de for Pakistan cities.
 
 Parses exam date blocks from the Goethe-Institut Pakistan registration page.
+Prices are NOT in static HTML — the Prüfungsfinder widget loads them via JS.
+The PRICE_MAP below is manually maintained (verified values only).
+For live prices, use Playwright to render the JS widget or capture the
+exam finder API call via browser DevTools Network tab.
+
 Caches results for 1 hour.
 """
 from __future__ import annotations

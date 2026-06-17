@@ -126,3 +126,40 @@ de494c0 docs: update session summary with validation fix + live log view + date 
 | `SESSION_SUMMARY.md` | Updated with all changes |
 | `scripts/check_buttons.py` | Created — login + booking availability checker |
 | `C:\Users\brosp\Downloads\config.csv` | Created & fixed — 3 students, Karachi, June 19 |
+
+---
+
+## Session 16 — June 18, 2026 — Live Price Scraping Investigation
+
+### Goal
+Determine if Goethe Pakistan exam fees (A1-C2) can be fetched live instead of using the hardcoded `PRICE_MAP`.
+
+### Investigation Summary
+
+**Pages checked (both desktop & mobile):**
+- `gzsd1.cfm` (A1), `gzsd2.cfm` (A2), `gzb1.cfm` (B1), `gzb2.cfm` (B2), `gzc1.cfm` (C1), `gzc2.cfm` (C2)
+
+**Finding:** No prices in any static HTML. All exam pages use the **Prüfungsfinder** (Exam Finder) CMS application (`APP_ID: 1276`, `TEMPLATE_ID: 362`) that loads dates/prices dynamically via JavaScript.
+
+**JS bundles checked for hidden API endpoints:**
+- `goethe.main.gimin.js` — small loader, no URLs
+- `goethe.support.gimin.js` — jQuery helpers, no API calls
+- `jquery.gi-merged.gimin.js` — mobile JS, 13KB minified, no prices
+- `tiLoader.min.js` — tracking tag only (`responder.wt-safetag.com`)
+- `course-finder-service.gimin.js` — data processor for courses (not exams)
+
+**Third-party sources:**
+- `bookgermantest.com/goethe/lahore` — shows exam slots (dates) but no prices
+- Web search — found course fees (PKR 25K-60K) but no exam fee tables
+
+### Verdict
+Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (Playwright/Selenium) — the Prüfungsfinder does not expose prices in any static HTML or easily-reverse-engineerable API endpoint.
+
+### Recommendations
+1. **Add Playwright** — use it to render the exam page, wait for the widget to populate, then extract prices from the DOM
+2. **Capture the API call** — open DevTools Network tab on the exam page, find the JSON request, replicate it directly
+3. **Keep the PRICE_MAP** as-is — it's manually maintained but more reliable than broken scraping
+
+### What Changed
+- `goethe_scraper.py` — Added docstring explaining live price scraping limitation
+- `SESSION_SUMMARY.md` — Updated with full investigation
