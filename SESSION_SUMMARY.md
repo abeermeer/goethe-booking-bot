@@ -174,4 +174,9 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 - No idle sleep or downtime (unlike free tier which hibernates after inactivity)
 
 ### Git
-- `12f7536` committed & pushed to `abeermeer/goethe-booking-bot`
+- `12f7536` committed & pushed — price scraping investigation
+- `06b7c7f` committed & pushed — session 17 railway clarification
+- `1edbd12` committed & pushed — README.md scraper desc updated with price info
+
+### What Changed
+- `README.md` — Updated `goethe_scraper.py` description to mention prices are JS-rendered + PRICE_MAP maintained
