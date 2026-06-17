@@ -943,6 +943,26 @@ Dead man switch fired falsely every 5 min during idle. Only `deadman.ping()` cal
 
 **Project rating: ~10/10 — production grade**
 
+### Post-Session Fixes
+- Smoke CI failed `AUTH_EMAIL`/`AUTH_PASSWORD` not set in env — added job-level vars (`9a003f9`)
+- README.md updated to reflect all 53 gaps closed, new modules, CI workflows, env vars (`e3ab275`)
+
+### Commits (Session 13)
+- `fe670a3` — Dependabot, SRI, smoke CI
+- `d49b3be` — API versioning via Blueprint (`/api/` + `/api/v1/`)
+- `db0b742` — Pydantic validation (7 endpoints)
+- `53985f6` — Postman collection
+- `194566f` — a11y CI (axe-core)
+- `1400065` — backup, rollback, secrets rotation, health gate, staging
+- `ca97ecf` — JSON logging, `/api/metrics`, uptime monitor, alert script
+- `efc31c9` — perf, fuzz, visual, k6 load tests
+- `60e756f` — PostgreSQL via SQLAlchemy (`database.py`)
+- `46b996f` — async worker, WebSocket stub, plugin manager, BCP/training/SLA
+- `3a8d18c` — SESSION_SUMMARY update
+- `e3ab275` — README update
+- `9a003f9` — smoke CI fix
+- **122 total commits on main**
+
 ### Blocked Until External Setup
 - CAPTCHA_API_KEY env var on Railway (2Captcha ~$3)
 - PROXY_LIST env var with valid proxies
