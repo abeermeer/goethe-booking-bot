@@ -2,6 +2,13 @@
 
 > Fully automated bot for booking Goethe-Institut Pakistan German language exams (A1, A2, B1) across Karachi, Lahore, and Islamabad.
 
+> **⚠️ LEGAL DISCLAIMER:** Automating Goethe-Institut's registration process likely violates their Terms of Service. This software is provided for **educational purposes only**. Use at your own risk. The author assumes no liability for:
+> - Account bans or penalties imposed by Goethe-Institut
+> - Missed deadlines, visa delays, or any consequential damages from bot failure
+> - Violation of Goethe-Institut's TOS, Computer Fraud and Abuse Act, or equivalent laws
+> 
+> **You are responsible for** verifying TOS compliance in your jurisdiction before using this bot for actual bookings. This is an experimental tool, not a guaranteed booking service.
+
 <p align="center">
   <img src="https://img.shields.io/badge/tests-66%20passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python">
@@ -237,6 +244,15 @@ Drag & drop `frontend/` folder to https://app.netlify.com/drop
 
 ### Backend → Railway ($5/mo recommended)
 Push to GitHub → Railway → New Project → Deploy from GitHub repo. Includes Dockerfile.
+
+**⚠️ IMPORTANT: Use PostgreSQL for persistence.**
+Railway containers restart periodically — SQLite data will be lost. After creating your Railway project:
+1. Go to your project dashboard → **New → Database → Add PostgreSQL**
+2. Copy the `DATABASE_URL` connection string
+3. Go to your service's **Variables** tab → add `DATABASE_URL` with the copied value
+4. Deploy — the bot auto-detects Postgres and uses it over SQLite
+
+Without Postgres, container restarts wipe your queue, logs, and student data.
 
 ### Backend → Free Options
 - **ngrok** — Expose local backend instantly: `powershell -File ngrok_setup.ps1`

@@ -180,3 +180,35 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 
 ### What Changed
 - `README.md` — Updated `goethe_scraper.py` description to mention prices are JS-rendered + PRICE_MAP maintained
+
+---
+
+## Session 18 — June 18, 2026 — Anti-Detection, TOS Disclaimer, Postgres Docs, Live Tests
+
+### Changes
+
+| File | Action |
+|------|--------|
+| `booking_helper.py` | Added `undetected-chromedriver` with stealth fallback + CDP-based stealth patches (navigator.webdriver, plugins, languages, platform, hardwareConcurrency, chrome.runtime) |
+| `requirements.txt` | Added `undetected-chromedriver>=3.5.0` |
+| `README.md` | Added TOS disclaimer at top + Railway Postgres persistence docs with step-by-step setup |
+| `frontend/index.html` | Added fixed disclaimer bar (`⚠️ Educational purposes — use at own risk`) + CSS styling |
+| `tests/test_live_portal.py` | Created — Playwright tests that hit real goethe.de pages (exam page loads, widget renders, all 6 levels accessible) — skipped by default, run with `pytest tests/test_live_portal.py -v` |
+
+### Anti-Detection Improvements
+- **undetected-chromedriver** — auto-patches chromedriver to avoid detection, handles driver management. Falls back to standard selenium if unavailable
+- **CDP stealth patches** — spoofs `webdriver`, `plugins`, `languages`, `platform`, `hardwareConcurrency`, `deviceMemory`, `chrome.runtime` on every page load
+- JA3 randomization not implemented (requires TLS proxy layer)
+
+### Legal
+- README now has prominent **⚠️ LEGAL DISCLAIMER** covering TOS violations, account bans, liability waiver
+- Bot CLI prints disclaimer on every run
+- Frontend shows persistent red bar at bottom
+
+### Postgres on Railway
+- Default SQLite will lose data on container restart
+- README now has 3-step guide: Add Postgres DB → Copy `DATABASE_URL` → Set as env var
+- `database.py` already auto-detects Postgres when `DATABASE_URL` is set
+
+### Git
+- Local files updated on disk and pushed to GitHub

@@ -35,6 +35,11 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
 from selenium import webdriver
+try:
+    import undetected_chromedriver as uc
+    HAS_UC = True
+except ImportError:
+    HAS_UC = False
 from selector_fallbacks import (
     find_element_fallback,
     find_elements_fallback,
@@ -218,6 +223,26 @@ def notify(title: str, message: str, logger: logging.Logger) -> None:
 
 _driver_counter = 0
 
+def _apply_stealth(driver: webdriver.Chrome) -> None:
+    """Apply CDP-based stealth patches to avoid detection."""
+    try:
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+                Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+                Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
+                Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+                Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+                Object.defineProperty(navigator, 'maxTouchPoints', {get: () => 1});
+                window.chrome = {runtime: {}};
+                Object.defineProperty(navigator, 'pdfViewerEnabled', {get: () => false});
+            """
+        })
+    except Exception:
+        pass
+
+
 def create_driver(use_headless: bool, logger: logging.Logger, proxy: Optional[str] = None) -> webdriver.Chrome:
     global _driver_counter
     _driver_counter += 1
@@ -275,6 +300,26 @@ def create_driver(use_headless: bool, logger: logging.Logger, proxy: Optional[st
     profile_dir.mkdir(parents=True, exist_ok=True)
     options.add_argument(f"--user-data-dir={profile_dir}")
 
+    max_attempts = 3
+    last_exc = None
+
+    # ── undetected-chromedriver path (stealth) ──
+    if HAS_UC:
+        for attempt in range(1, max_attempts + 1):
+            try:
+                driver = uc.Chrome(options=options, version_main=None, use_subprocess=True)
+                _apply_stealth(driver)
+                logger.info("Driver created (undetected-chromedriver): UA=%s, VP=%sx%s%s", ua[:50], vp[0], vp[1], f", proxy={proxy}" if proxy else "")
+                return driver
+            except Exception as exc:
+                last_exc = exc
+                if attempt < max_attempts:
+                    logger.warning("uc.Chrome attempt %d/%d failed: %s. Retrying in 5s...", attempt, max_attempts, exc)
+                    time.sleep(5)
+                else:
+                    logger.warning("undetected-chromedriver failed, falling back to standard selenium: %s", exc)
+
+    # ── Standard selenium fallback ──
     if os.name != "nt":
         system_driver = next((p for p in ["/usr/local/bin/chromedriver", "/usr/bin/chromedriver", "/usr/lib/chromium/chromedriver"] if Path(p).exists()), None)
         if system_driver:
@@ -284,21 +329,20 @@ def create_driver(use_headless: bool, logger: logging.Logger, proxy: Optional[st
     else:
         service = Service(ChromeDriverManager().install())
         service.creation_flags = 0
-    max_attempts = 3
+
     for attempt in range(1, max_attempts + 1):
         try:
             driver = webdriver.Chrome(service=service, options=options)
+            _apply_stealth(driver)
             break
         except Exception as exc:
+            last_exc = exc
             if attempt < max_attempts:
                 logger.warning("Chrome launch attempt %d/%d failed: %s. Retrying in 5s...", attempt, max_attempts, exc)
                 time.sleep(5)
             else:
                 raise
-    try:
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-    except Exception:
-        pass
+
     logger.info("Driver created: UA=%s, VP=%sx%s%s", ua[:50], vp[0], vp[1], f", proxy={proxy}" if proxy else "")
     return driver
 
@@ -1156,7 +1200,13 @@ def main() -> int:
     if args.telegram_chat_id:
         TELEGRAM_CHAT_ID = args.telegram_chat_id
 
-    logger.warning("=== Goethe Booking Bot - Personal Use Only ===")
+    logger.warning("=" * 60)
+    logger.warning("  LEGAL DISCLAIMER:")
+    logger.warning("  Automating Goethe-Institut registration likely violates their TOS.")
+    logger.warning("  This tool is for EDUCATIONAL PURPOSES only. Use at your own risk.")
+    logger.warning("  The author assumes NO LIABILITY for account bans, missed deadlines,")
+    logger.warning("  visa delays, or any damages resulting from bot usage.")
+    logger.warning("=" * 60)
 
     students = load_all_students(args.config)
     db.save_students(students)

@@ -36,6 +36,19 @@
     --glass-highlight: rgba(255,255,255,0.02);
     --auth-bg: linear-gradient(135deg, #07070d, #0d0d1a);
   }
+  .disclaimer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--red);
+    color: #fff;
+    font-size: 11px;
+    text-align: center;
+    padding: 6px 12px;
+    z-index: 9999;
+    opacity: 0.85;
+  }
   [data-theme="light"] {
     --bg: #f5f5fa;
     --surface: rgba(255,255,255,0.8);
@@ -1895,6 +1908,9 @@ function escHtml(s) {
   return d.innerHTML;
 }
 </script>
+<div class="disclaimer-bar">
+  ⚠️ This tool is for educational purposes. Automating Goethe-Institut registration likely violates their TOS. Use at your own risk.
+</div>
 <div class="toast-container" id="toastContainer"></div>
 <div id="errorBoundary" role="alertdialog" aria-labelledby="errorTitle">
   <h2 id="errorTitle">Something went wrong</h2>
