@@ -298,8 +298,12 @@ def add_headers(resp):
 
 # ── Rate limiter ──
 _login_attempts = defaultdict(list)
-RATE_LIMIT = 5  # max attempts
+RATE_LIMIT = 5  # max attempts per IP
 RATE_WINDOW = 300  # seconds (5 min)
+_global_failures = 0
+_global_lockout_until: float = 0
+ACCOUNT_LOCKOUT_THRESHOLD = 30  # total failed attempts across all IPs
+ACCOUNT_LOCKOUT_DURATION = 900  # 15 min
 
 
 def _check_rate_limit(ip: str) -> bool:
@@ -332,7 +336,15 @@ def _check_rate_limit(ip: str) -> bool:
     "responses": {"200": {"description": "Login successful, returns token"}},
 })
 def api_login():
+    global _global_failures, _global_lockout_until
     ip = request.remote_addr or "unknown"
+    if time.monotonic() < _global_lockout_until:
+        remaining = round(_global_lockout_until - time.monotonic())
+        db.add_audit_log("login_blocked", "global", "Account locked due to brute force", ip)
+        resp = jsonify({"ok": False, "error": f"Account locked. Try again in {remaining}s."})
+        resp.status_code = 429
+        resp.headers["Retry-After"] = str(remaining)
+        return resp
     if not _check_rate_limit(ip):
         resp = jsonify({"ok": False, "error": "Too many attempts. Try again in 5 minutes."})
         resp.status_code = 429
@@ -343,10 +355,15 @@ def api_login():
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
     if hmac.compare_digest(email, AUTH_EMAIL.lower()) and hmac.compare_digest(password, AUTH_PASSWORD):
+        _global_failures = 0
         token = _make_token(AUTH_EMAIL)
         db.add_audit_log("login", email, "Successful login", ip)
         return jsonify({"ok": True, "token": token, "email": AUTH_EMAIL})
-    db.add_audit_log("login_failed", email, "Failed login attempt", ip)
+    _global_failures += 1
+    db.add_audit_log("login_failed", email, f"Failed login attempt (global: {_global_failures})", ip)
+    if _global_failures >= ACCOUNT_LOCKOUT_THRESHOLD:
+        _global_lockout_until = time.monotonic() + ACCOUNT_LOCKOUT_DURATION
+        db.add_audit_log("login_lockout", "global", f"Account locked for {ACCOUNT_LOCKOUT_DURATION}s", ip)
     return jsonify({"ok": False, "error": "Invalid email or password"}), 401
 
 
@@ -597,14 +614,21 @@ def api_health():
         pass
     chrome_ok = bot._find_chrome() is not None if hasattr(bot, "_find_chrome") else True
     uptime = round(time.time() - PROCESS_START_TIME)
+    cb = bot.CIRCUIT_BREAKER
     return jsonify({
         "status": "ok" if db_ok else "degraded",
         "uptime_seconds": uptime,
+        "version": "2.0.0",
         "checks": {
             "database": "ok" if db_ok else "fail",
             "chrome": "ok" if chrome_ok else "fail",
         },
-        "version": "2.0.0",
+        "circuit_breaker": {
+            "state": cb.state,
+            "consecutive_failures": cb.consecutive_failures,
+            "threshold": cb.threshold,
+            "cooldown_seconds": cb.cooldown,
+        },
     })
 
 @app.route("/api/audit-log")
