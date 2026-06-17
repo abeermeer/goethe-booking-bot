@@ -733,3 +733,81 @@ Dead man switch fired falsely every 5 min during idle. Only `deadman.ping()` cal
 - PROXY_LIST env var with valid proxies
 - SMTP env vars for email notifications (Gmail App Password)
 - Real booking test on July 17
+
+---
+
+## Full 10/10 Gap Analysis — 53 Items
+
+### 🔵 API & Documentation (7)
+1. **Swagger/OpenAPI spec** — no `/api/docs` or OpenAPI JSON endpoint
+2. **API versioning** — no `/api/v1/` prefix, breaking changes impossible to detect
+3. **Request/response validation** — no Pydantic schemas on endpoints
+4. **Error format standardization** — errors are plain strings, not `{error, code, detail}` objects
+5. **Rate limit headers** — no `X-RateLimit-Remaining`, `Retry-After` on 429 responses
+6. **API changelog** — no CHANGELOG.md or API migration guide
+7. **Postman/Insomnia collection** — no importable API collection for clients
+
+### 🟢 Testing & Quality (8)
+8. **E2E tests** — no Playwright/Cypress tests for the full login→booking flow
+9. **Integration tests with real DB** — tests use in-memory SQLite, not a staging DB
+10. **Smoke test in CI** — no `--mock` mode booking test in GitHub Actions
+11. **Performance benchmarks** — no timing baseline for booking speed regressions
+12. **Fuzz/edge-case testing** — no test with empty student list, malformed CSV, network-offline
+13. **Selenium screenshot diff tests** — no visual regression for booking pages
+14. **Load test** — no k6/locust script for 10+ concurrent students
+15. **Accessibility tests** — no axe-core or Lighthouse a11y checks in CI
+
+### 🟡 Security (9)
+16. **Content Security Policy** — no CSP headers, XSS possible if frontend has injection
+17. **Subresource Integrity** — no SRI hashes on CDN assets (if any)
+18. **Session rotation** — tokens never rotated, no refresh token mechanism
+19. **Brute force protection** — login rate limit per-IP only, no account lockout
+20. **Audit log** — no log of who started/stopped the bot and when
+21. **Secrets rotation schedule** — no documented process for rotating Railway/GitHub tokens
+22. **HTTPS redirect enforcement** — no HSTS header (preload ready)
+23. **CORS origin whitelist** — currently `*`, should restrict to known Netlify domain
+24. **Dependency vulnerability scan** — no `pip-audit` or Dependabot in CI
+
+### 🟠 Infrastructure & DevOps (8)
+25. **Alembic migrations** — no schema migration system, DB changes require manual recreate
+26. **Docker multi-stage build** — Dockerfile could be optimized (smaller image, cached layers)
+27. **Health check endpoint** — no `/api/health` that checks DB, Chrome, disk space
+28. **Backup strategy** — no automated DB backup (SQLite file on ephemeral Railway disk)
+29. **Rollback plan** — no documented `git revert` + redeploy procedure
+30. **Staging environment** — no staging Railway project for pre-prod testing
+31. **Deployment notifications** — no Slack/Telegram alert when deploy fails
+32. **Zero-downtime deploy** — Railway restarts app, brief downtime on each deploy
+
+### 🔴 Monitoring & Observability (7)
+33. **Structured logging search** — ndjson logs but no log aggregation (Datadog, Grafana, Loki)
+34. **Metrics dashboard** — no Grafana dashboard for booking success rate, latency, errors
+35. **Alerting rules** — no PagerDuty/Opsgenie for booking failures or circuit breaker open
+36. **Sentry/error tracking** — no exception aggregation, errors lost if not read in log stream
+37. **Uptime monitoring** — no external ping (BetterUptime, Pingdom) for Railway + Netlify
+38. **Business metrics** — no tracking of students booked per day, success rate trend
+39. **Circuit breaker metrics exposed** — no `/api/health/circuit-breaker` endpoint
+
+### 🟣 Frontend (7)
+40. **Offline support** — no Service Worker, app dies without internet
+41. **PWA manifest** — no `manifest.json`, can't install as mobile app
+42. **Loading states on all API calls** — some fetches lack spinner/skeleton
+43. **Error boundary** — unhandled JS exceptions crash the entire dashboard
+44. **Form validation UX** — inline validation only, no real-time hints on password strength
+45. **Dark/light theme toggle** — currently dark-only, no user choice
+46. **Keyboard accessibility** — Tab order not audited, no focus ring visibility
+
+### ⚪ Backend/Architecture (4)
+47. **Async worker** — booking blocks the Flask process, should use Celery/ARQ
+48. **WebSocket for logs** — SSE is simpler but less reliable than WebSocket (no auto-reconnect)
+49. **Database connection pooling** — SQLite doesn't support concurrent writes well
+50. **Plugin architecture** — adding a new booking source (e.g., British Council) requires fork
+
+### 🟤 Production Readiness (3)
+51. **Business continuity plan** — no documented procedure if Railway/Netlify goes down
+52. **Client training** — no video tutorial or quick-start card for Hamza
+53. **Service Level Agreement** — no defined uptime, response time, or support hours
+
+### Fastest Path to 8.5+/10 (3-4 weeks)
+Swagger docs + Alembic + E2E tests (Playwright) + CSP headers + Sentry = biggest impact per effort.
+
+Items 1-3 env vars + July 17 test are the **actual blockers** for going live. Everything else is polish.
