@@ -10,6 +10,9 @@ jobs:
   smoke-test:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      AUTH_EMAIL: hamzarafiq655@gmail.com
+      AUTH_PASSWORD: Hamza@123
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
