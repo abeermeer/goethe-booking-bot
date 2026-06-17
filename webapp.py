@@ -46,6 +46,15 @@ from deadman import DeadManSwitch
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
 
+# ── Allowed origins for CORS ──
+_ALLOWED_ORIGINS = {
+    "https://goethe-booking-dashboard.netlify.app",
+    "https://goethe-booking-bot-production-092f.up.railway.app",
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+}
+
 
 @app.before_request
 def enforce_https():
@@ -221,14 +230,32 @@ def run_students_web(students: List[Dict], headless: bool, immediate: bool = Fal
     log_queue.put(None)  # Signal SSE stream to end
 
 
-# ── CORS (allow frontend from anywhere) ──
+# ── Security headers + CORS ──
 @app.after_request
-def add_cors(resp):
-    resp.headers["Access-Control-Allow-Origin"] = "*"
+def add_headers(resp):
+    origin = flask.request.headers.get("Origin", "")
+    if origin in _ALLOWED_ORIGINS or not origin:
+        resp.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
+    else:
+        resp.headers["Access-Control-Allow-Origin"] = ""
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, DELETE"
+    resp.headers["Access-Control-Expose-Headers"] = "X-RateLimit-Remaining, Retry-After"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-XSS-Protection"] = "1; mode=block"
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' https://goethe-booking-dashboard.netlify.app; "
+        "img-src 'self' data:; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "frame-ancestors 'none';"
+    )
     if flask.request.method == "OPTIONS":
         resp.status_code = 200
     return resp
@@ -255,7 +282,11 @@ def _check_rate_limit(ip: str) -> bool:
 def api_login():
     ip = request.remote_addr or "unknown"
     if not _check_rate_limit(ip):
-        return jsonify({"ok": False, "error": "Too many attempts. Try again in 5 minutes."}), 429
+        resp = jsonify({"ok": False, "error": "Too many attempts. Try again in 5 minutes."})
+        resp.status_code = 429
+        resp.headers["Retry-After"] = "300"
+        resp.headers["X-RateLimit-Remaining"] = "0"
+        return resp
     data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
@@ -463,6 +494,26 @@ def api_heartbeat():
         "status": "ok",
         "seconds_since_ping": deadman.seconds_since_ping,
         "alive": deadman.is_alive,
+    })
+
+@app.route("/api/health")
+def api_health():
+    db_ok = False
+    try:
+        db.get_state("health_check")
+        db_ok = True
+    except Exception:
+        pass
+    chrome_ok = bot._find_chrome() is not None if hasattr(bot, "_find_chrome") else True
+    uptime = round(time.time() - PROCESS_START_TIME)
+    return jsonify({
+        "status": "ok" if db_ok else "degraded",
+        "uptime_seconds": uptime,
+        "checks": {
+            "database": "ok" if db_ok else "fail",
+            "chrome": "ok" if chrome_ok else "fail",
+        },
+        "version": "2.0.0",
     })
 
 @app.route("/api/schedule")
