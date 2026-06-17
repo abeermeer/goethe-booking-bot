@@ -79,6 +79,7 @@ EXAM_URLS = {
     "B1": os.environ.get("MOCK_B1_URL", "https://www.goethe.de/ins/pk/en/spr/prf/gzb1.cfm"),
 }
 
+# ── Polling configuration ──
 DEFAULT_POLL_INTERVAL = 10
 MIN_HUMAN_DELAY = 0.3
 MAX_HUMAN_DELAY = 1.0
@@ -89,6 +90,11 @@ BURST_PRE_POLL = 2.0
 BURST_POST_POLL_MIN = 1.0
 BURST_POST_POLL_MAX = 2.0
 BURST_CRASH_RETRY = 1.0
+
+# Configurable polling jitter (env overrides)
+_BASE_POLL = float(os.environ.get("POLL_INTERVAL", "10"))
+_JITTER_MAX = float(os.environ.get("POLL_JITTER", "5"))
+DEFAULT_POLL_INTERVAL = _BASE_POLL + random.uniform(0, _JITTER_MAX)
 
 # ── Proxy rotation ──
 PROXY_LIST = [p.strip() for p in os.environ.get("PROXY_LIST", "").split(",") if p.strip()]
@@ -108,6 +114,15 @@ CIRCUIT_BREAKER_COOLDOWN = int(os.environ.get("CIRCUIT_BREAKER_COOLDOWN", "900")
 
 
 CIRCUIT_BREAKER = CircuitBreaker(threshold=CIRCUIT_BREAKER_THRESHOLD, cooldown=CIRCUIT_BREAKER_COOLDOWN)
+
+
+def _classify_error(exc: Exception) -> str:
+    msg = str(exc).lower()
+    if "503" in msg or "block" in msg or "captcha" in msg or "rate limit" in msg or "429" in msg:
+        return "block"
+    if "timeout" in msg or "timed out" in msg:
+        return "timeout"
+    return "generic"
 
 # ── Exam schedule (Pakistan 2026) ──
 EXAM_SCHEDULE = [
@@ -181,7 +196,48 @@ def load_all_students(path: str) -> List[Dict[str, str]]:
                 rows.append(data)
         if not rows:
             raise ValueError("No student rows found in CSV")
-        return rows
+    _validate_students(rows)
+    return rows
+
+
+VALID_LEVELS = {"A1", "A2", "B1", "B2", "C1", "C2"}
+VALID_CITIES = {"Karachi", "Lahore", "Islamabad"}
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _validate_students(students: List[Dict]) -> None:
+    errors = []
+    for i, s in enumerate(students):
+        idx = i + 1
+        name = s.get("name", "").strip()
+        email = s.get("email", "").strip()
+        level = s.get("level", s.get("exam_level", "")).strip().upper()
+        city = s.get("city", "").strip()
+        dob = s.get("dob", "").strip()
+        bdt = s.get("booking_datetime", "").strip()
+
+        if not name:
+            errors.append(f"Row {idx}: name is required")
+        if not email:
+            errors.append(f"Row {idx}: email is required")
+        elif not _EMAIL_RE.match(email):
+            errors.append(f"Row {idx}: invalid email '{email}'")
+        if level and level not in VALID_LEVELS:
+            errors.append(f"Row {idx}: invalid level '{level}' (valid: A1-C2)")
+        if city and city not in VALID_CITIES:
+            errors.append(f"Row {idx}: invalid city '{city}' (valid: Karachi, Lahore, Islamabad)")
+        if dob:
+            parts = dob.replace("-", ".").split(".")
+            if len(parts) != 3 or not all(p.isdigit() for p in parts):
+                errors.append(f"Row {idx}: invalid DOB format '{dob}' (use DD.MM.YYYY)")
+        if bdt:
+            try:
+                dt.datetime.fromisoformat(bdt)
+            except ValueError:
+                errors.append(f"Row {idx}: invalid booking_datetime '{bdt}' (use ISO format YYYY-MM-DDTHH:MM)")
+
+    if errors:
+        raise ValueError("Config validation failed:\n" + "\n".join(errors))
 
 
 def parse_exam_time_str(raw: str) -> Optional[dt.datetime]:
@@ -555,17 +611,88 @@ def solve_captcha(driver: webdriver.Chrome, logger: logging.Logger) -> bool:
 def smart_retry(student: Dict[str, str], use_headless: bool, logger: logging.Logger,
                 stop_event: threading.Event, attempt: int = 1,
                 immediate: bool = False) -> Dict[str, str]:
-    """Run student flow with smart retry on failure (new profile, new proxy).
-    When immediate=True, skip the scheduled wait and run right away."""
+    """Run student flow with smart retry + exponential backoff + jitter.
+    Classifies transient vs permanent failures; gives up earlier on the latter."""
     result = run_student_flow(student, use_headless, logger, stop_event, immediate=immediate)
     status = result.get("status", "failed")
+    error_msg = result.get("error", "").lower() if result else ""
+
     if status in ("failed", "error") and attempt <= MAX_SMART_RETRIES:
-        logger.warning("Smart retry %d/%d for %s", attempt, MAX_SMART_RETRIES, student.get("name", "?"))
+        is_transient = any(kw in error_msg for kw in [
+            "timeout", "connection", "temporary", "unavailable",
+            "gateway", "bad gateway", "service unavailable",
+        ])
+        retries_left = MAX_SMART_RETRIES if is_transient else 1
+        if attempt > retries_left:
+            logger.warning("Not retrying %s — permanent error: %s",
+                           student.get("name", "?"), error_msg[:80])
+            return result
+
+        logger.warning("Smart retry %d/%d for %s (transient=%s)",
+                       attempt, MAX_SMART_RETRIES, student.get("name", "?"), is_transient)
         if not CIRCUIT_BREAKER.wait_until_allowed(poll=5.0, stop_event=stop_event):
             result["status"] = "stopped"
             return result
-        time.sleep(random.uniform(30, 60))
+
+        base_wait = 30 if is_transient else 60
+        delay = random.uniform(base_wait, base_wait * 1.5) * min(attempt, 3)
+        logger.info("Backoff: waiting %.1fs before retry", delay)
+        for _ in range(int(delay)):
+            if stop_event.is_set():
+                result["status"] = "stopped"
+                return result
+            time.sleep(1)
+
         result = smart_retry(student, use_headless, logger, stop_event, attempt + 1, immediate=immediate)
+    return result
+
+
+# ── Slot pre-check ──
+
+def check_slot_availability(student: Dict[str, str], logger: logging.Logger) -> Dict:
+    """Quick pre-check: open the exam page and report available slots.
+    Returns {available: bool, slots_found: int, message: str, details: List[Dict]}."""
+    result = {"available": False, "slots_found": 0, "message": "", "details": []}
+    driver = None
+    try:
+        driver = create_driver(logger)
+        exam_url = _build_exam_url(student)
+        logger.info("Slot pre-check: loading %s", exam_url)
+        driver.get(exam_url)
+        wait_for_document_ready(driver)
+        time.sleep(3)
+        from selenium.webdriver.common.by import By
+        from selenium.common.exceptions import NoSuchElementException, TimeoutException
+        try:
+            close_btn = driver.find_element(By.CSS_SELECTOR, "button.close, .modal-close, [data-dismiss='modal']")
+            close_btn.click()
+            time.sleep(1)
+        except (NoSuchElementException, TimeoutException):
+            pass
+        page = driver.page_source
+        soup = BeautifulSoup(page, "html.parser")
+        buttons = soup.find_all("button", string=re.compile(r"book\s*now", re.I))
+        links = soup.find_all("a", string=re.compile(r"book\s*now", re.I))
+        slots = buttons + links
+        if not slots:
+            spans = soup.find_all("span", class_=re.compile(r"book|slot|available", re.I))
+            slots = [s for s in spans if "book" in s.get_text(strip=True).lower()]
+        if slots:
+            result["available"] = True
+            result["slots_found"] = len(slots)
+            result["message"] = f"Found {len(slots)} bookable slot(s) for {student.get('name', '?')}"
+        else:
+            result["message"] = f"No bookable slots detected for {student.get('name', '?')}"
+        result["details"] = [{"text": s.get_text(strip=True)[:100]} for s in slots[:10]]
+    except Exception as exc:
+        logger.warning("Slot pre-check failed: %s", exc)
+        result["message"] = f"Pre-check error: {exc}"
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
     return result
 
 
@@ -1012,7 +1139,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 page_loaded = True
 
                 if not burst and is_blocked_response(driver):
-                    CIRCUIT_BREAKER.record_failure()
+                    CIRCUIT_BREAKER.record_failure("block")
                     cd = long_cooldown()
                     logger.warning("Block detected. Cooling down %ss", cd)
                     for _ in range(cd):
@@ -1069,7 +1196,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 time.sleep(gap)
                 page_loaded = False
             except WebDriverException as exc:
-                CIRCUIT_BREAKER.record_failure()
+                CIRCUIT_BREAKER.record_failure(_classify_error(exc))
                 consecutive_errors += 1
                 gap = BURST_CRASH_RETRY * 2 if burst else bounded_backoff(consecutive_errors, base=5, cap=120)
                 logger.error("WebDriver error: %s. Retry in %.1fs", exc, gap)
@@ -1167,7 +1294,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         logger.info("Interrupted by user.")
         result["status"] = "interrupted"
     except Exception as exc:
-        CIRCUIT_BREAKER.record_failure()
+        CIRCUIT_BREAKER.record_failure(_classify_error(exc))
         logger.exception("Flow error for %s: %s", name, exc)
         if assigned_proxy:
             PROXY_ROTATOR.mark_failed(assigned_proxy)

@@ -948,6 +948,51 @@ def api_queue_clear():
     return jsonify({"ok": True})
 
 
+# ── Slot pre-check ──
+
+@bp.route("/slots/check", methods=["POST"])
+@require_auth
+def api_slots_check():
+    data = request.get_json(silent=True) or {}
+    students = data.get("students", [])
+    if not students:
+        students = _get_loaded_students()
+    if not students:
+        return jsonify({"ok": False, "error": "No students provided or loaded"}), 400
+
+    results = []
+    for s in students:
+        name = s.get("name", "?")
+        try:
+            r = bot.check_slot_availability(s, logging.getLogger("slot_check"))
+        except Exception as exc:
+            r = {"available": False, "slots_found": 0, "message": f"Error: {exc}", "details": []}
+        r["name"] = name
+        results.append(r)
+
+    any_available = any(r.get("available") for r in results)
+    return jsonify({"ok": True, "results": results, "any_available": any_available})
+
+
+# ── Booking history ──
+
+@bp.route("/history")
+@require_auth
+def api_booking_history():
+    limit = int(request.args.get("limit", 100))
+    return jsonify({"ok": True, "items": db.get_booking_history(limit)})
+
+
+@bp.route("/history/search")
+@require_auth
+def api_booking_search():
+    q = request.args.get("q", "")
+    limit = int(request.args.get("limit", 100))
+    if not q.strip():
+        return jsonify({"ok": False, "error": "Missing query param 'q'"}), 400
+    return jsonify({"ok": True, "results": db.search_logs(q, limit)})
+
+
 # ── Database-backed endpoints ──
 
 @bp.route("/db/students")

@@ -275,6 +275,40 @@ def get_logs(limit: int = 100, date_filter: Optional[str] = None) -> List[Dict]:
         } for r in rows]
 
 
+def search_logs(query: str, limit: int = 100) -> List[Dict]:
+    with SessionLocal() as session:
+        q = session.query(LogModel).order_by(LogModel.id.desc())
+        q = q.filter(
+            LogModel.student_key.ilike(f"%{query}%") |
+            LogModel.message.ilike(f"%{query}%")
+        )
+        rows = q.limit(limit).all()
+        return [{
+            "time": r.time.isoformat() if r.time else "",
+            "student_key": r.student_key,
+            "level": r.level,
+            "message": r.message,
+        } for r in rows]
+
+
+def get_booking_history(limit: int = 100) -> List[Dict]:
+    """Combine queue history + recent logs as a unified booking history."""
+    with SessionLocal() as session:
+        qh = session.query(QueueHistoryModel).order_by(QueueHistoryModel.finished_at.desc().nullsfirst()).limit(limit).all()
+        rows = [{
+            "type": "booking",
+            "name": r.name,
+            "email": r.email,
+            "level": r.level,
+            "city": r.city,
+            "status": r.status,
+            "result": json.loads(r.result_json) if r.result_json else {},
+            "queued_at": r.queued_at.isoformat() if r.queued_at else "",
+            "finished_at": r.finished_at.isoformat() if r.finished_at else "",
+        } for r in qh]
+        return rows
+
+
 # ── Audit log ──
 
 def add_audit_log(action: str, email: str, details: str = "", ip: str = ""):

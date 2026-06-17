@@ -126,6 +126,25 @@ def get_logs(student_key: Optional[str] = None, limit: int = 200) -> List[Dict]:
     return [dict(r) for r in rows]
 
 
+def search_logs(query: str, limit: int = 100) -> List[Dict]:
+    conn = _get_conn()
+    like = f"%{query}%"
+    rows = conn.execute(
+        "SELECT * FROM logs WHERE student_key LIKE ? OR message LIKE ? ORDER BY id DESC LIMIT ?",
+        (like, like, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_booking_history(limit: int = 100) -> List[Dict]:
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT * FROM queue_history ORDER BY finished_at DESC NULLS LAST, id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def set_state(key: str, value: str):
     conn = _get_conn()
     conn.execute("INSERT OR REPLACE INTO bot_state (key, value) VALUES (?, ?)", (key, value))

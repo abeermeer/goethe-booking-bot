@@ -212,3 +212,45 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 
 ### Git
 - Local files updated on disk and pushed to GitHub
+
+---
+
+## Session 19 — June 18, 2026 — Claude Critique Fixes: Config Validation, Smart Retry, Circuit Breaker, Slot Pre-check, Booking History, API Endpoints
+
+### Changes
+
+| File | Action |
+|------|--------|
+| `circuit_breaker.py` | Rewrote with error-type awareness (`block`/`timeout`/`generic`), per-type thresholds/cooldowns configurable via env vars |
+| `booking_helper.py` | Added `_validate_students()` (validates CSV: name, email format, level A1-C2, city, DOB, ISO datetime), `_classify_error()`, configurable polling jitter (`POLL_INTERVAL`/`POLL_JITTER`), enhanced `smart_retry()` with exponential backoff + transient error classification, `check_slot_availability()` to pre-check for "Book Now" buttons |
+| `webapp.py` | Added `POST /api/slots/check` (batch pre-check), `GET /api/history` (booking history), `GET /api/history/search?q=...` (log search) |
+| `db.py` | Added `search_logs()`, `get_booking_history()` |
+| `database.py` | Added `search_logs()`, `get_booking_history()` (for PostgreSQL path) |
+
+### Circuit Breaker
+- **Before**: Single threshold/cooldown for all errors, no differentiation
+- **After**: Three error types tracked independently:
+  - `block` (block/captcha/503/429): low threshold (5), long cooldown (15m)
+  - `timeout`: medium threshold (10), short cooldown (5m)
+  - `generic`: threshold 10, cooldown 15m
+- All configurable via `CB_BLOCK_THRESHOLD`, `CB_BLOCK_COOLDOWN`, `CB_TIMEOUT_*`, `CB_GENERIC_*` env vars
+
+### Config Validation
+- Checks all CSV rows on load: required `name`/`email`, email regex format, valid level (A1-C2), valid city (Karachi/Lahore/Islamabad), DOB format `DD.MM.YYYY`, booking datetime ISO format
+- Raises `ValueError` with all errors at once (not first-fail)
+
+### Smart Retry
+- Exponential backoff with jitter: `delay = random.uniform(30, 60) * min(attempt, 3)`
+- Transient errors (timeout/connection/unavailable) get full retry budget
+- Permanent errors limited to 1 retry, then give up
+- Stop-event checked during backoff wait
+
+### Slot Pre-check (`POST /api/slots/check`)
+- Accepts list of students or auto-uses loaded config
+- For each student: loads exam page, closes modals, parses HTML for "Book Now" buttons/links
+- Returns per-student result: `available`, `slots_found`, `message`, `details`
+
+### Booking History
+- `GET /api/history` — returns queue history with finished timestamps
+- `GET /api/history/search?q=keyword` — full-text search across logs by student name or message content
+
