@@ -1,0 +1,26 @@
+name: Accessibility
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday 6am UTC
+  workflow_dispatch:
+
+jobs:
+  a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install axe-core CLI
+        run: npm install -g @axe-core/cli
+      - name: Run axe on Netlify frontend
+        run: |
+          mkdir -p artifacts
+          npx @axe-core/cli https://goethe-booking-dashboard.netlify.app --exit --save artifacts/a11y-report.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a11y-report
+          path: artifacts/a11y-report.json
