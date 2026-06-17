@@ -789,7 +789,7 @@ Dead man switch fired falsely every 5 min during idle. Only `deadman.ping()` cal
 
 ### 🟣 Frontend (7)
 40. **Offline support** — no Service Worker, app dies without internet
-41. **PWA manifest** — no `manifest.json`, can't install as mobile app
+41. **PWA manifest icons** — `manifest.json` exists but only 192px SVG icon, no 512px or PNG fallback
 42. **Loading states on all API calls** — some fetches lack spinner/skeleton
 43. **Error boundary** — unhandled JS exceptions crash the entire dashboard
 44. **Form validation UX** — inline validation only, no real-time hints on password strength
