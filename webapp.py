@@ -45,7 +45,7 @@ class StudentItem(BaseModel):
     name: str = Field(min_length=1, max_length=255)
 
 class StartRequest(BaseModel):
-    students: list[StudentItem] = Field(min_length=1)
+    students: list[StudentItem] = Field(default_factory=list)
     headless: bool = True
     immediate: bool = False
     telegram_token: str = ""
@@ -54,7 +54,7 @@ class StartRequest(BaseModel):
 
 class ScheduleStartRequest(BaseModel):
     datetime: str = Field(min_length=1)
-    students: list[StudentItem] = Field(min_length=1)
+    students: list[StudentItem] = Field(default_factory=list)
 
 class QueueEnqueueRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
