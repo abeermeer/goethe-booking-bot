@@ -1581,6 +1581,11 @@ function startCountdown(students) {
   countdownTimer = setInterval(updateCountdown, 1000);
 }
 
+// ── PWA: register service worker ──
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
 // ── Error boundary ──
 window.onerror = function(msg, url, line, col, err) {
   const el = document.getElementById("errorBoundary");
