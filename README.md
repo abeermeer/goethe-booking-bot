@@ -46,12 +46,15 @@
 │  PWA offline (Service Worker)        │     │  /api/* (legacy backward compat)     │
 │  Dark/light theme · Error boundary   │     │  Swagger docs at /api/docs/          │
 │  Keyboard a11y · Loading overlay     │     │                                      │
-│  Password strength · Email validation│     │  ┌── Booking Engine ──────────────┐   │
-│  Connect via Backend URL             │     │  │  booking_helper.py             │   │
-│  Live logs · AI chat (Gemini)        │     │  │  ├─ selector_fallbacks.py      │   │
-│  Countdown timers · Queue mgmt       │     │  │  ├─ proxy_rotator.py           │   │
-│  No build step needed!               │     │  │  ├─ circuit_breaker.py         │   │
-└──────────────────────────────────────┘     │  │  └─ confirmation_parser.py     │   │
+│  Password strength · Email validation│     │  ┌── Schedule Scraper ───────────┐   │
+│  Connect via Backend URL             │     │  │  goethe_scraper.py             │   │
+│  Live logs · AI chat (Gemini)        │     │  │  └─ live exam dates            │   │
+│  Countdown timers · Queue mgmt       │     │  ├── Booking Engine ──────────────┤   │
+│  No build step needed!               │     │  │  booking_helper.py             │   │
+└──────────────────────────────────────┘     │  │  ├─ selector_fallbacks.py      │   │
+                                              │  │  ├─ proxy_rotator.py           │   │
+                                              │  │  ├─ circuit_breaker.py         │   │
+                                              │  │  └─ confirmation_parser.py     │   │
                                               │  ├── db.py / database.py (SQLite/PG)  │
                                               │  ├── student_queue.py                 │
                                               │  ├── deadman.py (heartbeat)           │
@@ -160,6 +163,7 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 |------|---------|
 | `webapp.py` | Backend API (Flask) — 35+ authenticated routes at `/api/v1/` + `/api/` |
 | `frontend/index.html` | Dashboard UI — deploy on Netlify |
+| `goethe_scraper.py` | Live exam schedule scraper — parses goethe.de for exam dates & reg openings across Karachi, Lahore, Islamabad |
 | `booking_helper.py` | Core bot engine — Selenium automation |
 | `circuit_breaker.py` | Stops hammering on 503/block — 15 min cooldown |
 | `selector_fallbacks.py` | 16 element types with DOM fallback chain |

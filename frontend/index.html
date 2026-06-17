@@ -1418,8 +1418,8 @@ async function refreshSchedule() {
       for (const e of items) {
         html += `<div style="background:var(--surface);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px;backdrop-filter:blur(12px);">`;
         html += `<div style="font-weight:600;color:var(--text);margin-bottom:6px;">${escHtml(e.city)}</div>`;
-        html += `<div style="font-size:12px;color:var(--text2);">${escHtml(e.date)}</div>`;
-        if (e.fee) html += `<div style="font-size:12px;color:var(--text2);">Fee: ${escHtml(e.fee)}</div>`;
+        html += `<div style="font-size:12px;color:var(--text2);">${escHtml(e.exam_date)}</div>`;
+        html += `<div style="font-size:11px;color:var(--text3);margin-top:4px;">Reg opens: ${escHtml(e.reg_open)} ${escHtml(e.reg_open_time)}</div>`;
         html += `</div>`;
       }
       html += `</div></div>`;
