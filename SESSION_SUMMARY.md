@@ -28,15 +28,57 @@
 | **Lahore** | 4 sessions | 2 sessions | 4 sessions |
 | **Islamabad** | 2 sessions | 2 sessions | 2 sessions |
 
+### `webapp.py` — Fixed "Validation failed" on Start Bot
+
+**Problem:** Clicking "Start Bot" returned `✕ Error: Validation failed`. The `StartRequest` Pydantic model required `students` (min_length=1), but the frontend's `startBot()` never sent a `students` array.
+
+**Root cause:** Both `StartRequest` and `ScheduleStartRequest` required `students` as a non-empty list. Both handlers ignored the field and loaded students from the uploaded config via `_get_loaded_students()`.
+
+**Fix:** Changed `students` from `Field(min_length=1)` to `Field(default_factory=list)` in both models.
+
+### `frontend/index.html` — Live Booking Status → Full Log View + Date Picker
+
+**Problem:** The "Live Booking Status" section showed only a summary table (Student, Level, City, Status, Updated). It was not useful for understanding what actually happened — who booked, who failed, when.
+
+**Changes:**
+- **Full chronological feed** combining student statuses, activity logs, and results in one scrollable view
+- **Status icons**: ✅ booked, ❌ failed, ⏳ pending, ⚠️ warning, ℹ️ info
+- **Rich details** per entry: reference numbers, exam dates, error messages
+- **Date picker** (`<input type="date">`) added to section header — browse any past date
+- **"Live" button** switches back to real-time auto-polling
+- Auto-poll (3s interval) only active when viewing live (no date selected)
+
+### `database.py` — Date-filtered logs
+
+- `get_logs()` now accepts optional `date_filter="YYYY-MM-DD"` parameter
+- Uses `timedelta(days=1)` for proper day boundary filtering (handles month rollover)
+
+### `webapp.py` — Enhanced `/api/live-status` endpoint
+
+- Accepts optional `?date=YYYY-MM-DD` query parameter, passed to `get_logs()`
+- Returns richer student data: `reference`, `exam_date`, `exam_time`, `error`
+- Includes `logs` and `results` arrays in response alongside `summary` and `students`
+
 ## Cleanup
 
 - Removed debug files: `debug_blocks.py`, `debug_cities.py`, `debug_cities2.py`, `debug_cities3.py`, `debug_between.py`, `debug_sections.py`, `inspect_html.py`
 - Fixed October month typo in MONTHS dict (was `9`, should be `10`)
+
+## Git History (this session)
+
+```
+ec38293 fix(goethe_scraper): rewrite parser — 26 entries across 3 cities (was 9)
+55e284a fix(api): make students optional in StartRequest and ScheduleStartRequest
+7de2508 feat(live-status): full log view with date picker
+```
 
 ## Files Modified
 
 | File | Action |
 |------|--------|
 | `goethe_scraper.py` | Rewritten |
-| `frontend/index.html` | Updated field references |
+| `frontend/index.html` | Updated field references + Live Status section rewritten |
+| `webapp.py` | Fixed validation models + enhanced live-status endpoint |
+| `database.py` | Added date filtering to get_logs() |
 | `README.md` | Added scraper to arch diagram + project files table |
+| `SESSION_SUMMARY.md` | Updated with all changes |
