@@ -677,6 +677,7 @@ def api_results():
 @bp.route("/live-status")
 @require_auth
 def api_live_status():
+    date_filter = request.args.get("date", "").strip()
     students = db.get_students()
     summary = {"total": 0, "booked": 0, "failed": 0, "pending": 0}
     per_student = []
@@ -689,14 +690,25 @@ def api_live_status():
         else:
             summary["pending"] += 1
         summary["total"] += 1
+        result = s.get("result", {})
         per_student.append({
             "name": s.get("name", "?"),
             "level": s.get("level", "?"),
             "city": s.get("city", "?"),
             "status": status,
+            "reference": result.get("reference", ""),
+            "exam_date": result.get("exam_date", ""),
+            "exam_time": result.get("exam_time", ""),
+            "error": result.get("error", ""),
             "updated_at": s.get("updated_at", ""),
         })
-    return jsonify({"summary": summary, "students": per_student})
+    logs = db.get_logs(limit=500, date_filter=date_filter or None)
+    return jsonify({
+        "summary": summary,
+        "students": per_student,
+        "logs": logs,
+        "results": student_results,
+    })
 
 
 @bp.route("/goethe-schedule")

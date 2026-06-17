@@ -256,9 +256,17 @@ def add_log(student_key: str, level: str, message: str):
         session.commit()
 
 
-def get_logs(limit: int = 100) -> List[Dict]:
+def get_logs(limit: int = 100, date_filter: Optional[str] = None) -> List[Dict]:
     with SessionLocal() as session:
-        rows = session.query(LogModel).order_by(LogModel.id.desc()).limit(limit).all()
+        q = session.query(LogModel).order_by(LogModel.id.desc())
+        if date_filter:
+            from datetime import datetime as dt, timedelta
+            try:
+                d = dt.strptime(date_filter, "%Y-%m-%d")
+                q = q.filter(LogModel.time >= d).filter(LogModel.time < d + timedelta(days=1))
+            except ValueError:
+                pass
+        rows = q.limit(limit).all()
         return [{
             "time": r.time.isoformat() if r.time else "",
             "student_key": r.student_key,

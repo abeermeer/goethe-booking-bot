@@ -796,21 +796,21 @@
         <div class="card fade-up fade-up-d3"><div class="card-hd"><h3>Queue</h3></div><div id="analyticsQueue" style="font-size:28px;font-weight:700;color:var(--accent);">—</div></div>
       </div>
 
-      <div class="section-title fade-up" style="margin:20px 0 10px;">
-        Live Booking Status
-        <span id="liveStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text3);margin-left:6px;"></span>
+      <div class="section-title fade-up" style="margin:20px 0 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span>Live Booking Status</span>
+        <span id="liveStatusDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text3);"></span>
+        <span style="flex:1;"></span>
+        <input type="date" id="statusDate" onchange="pollLiveStatus()" style="background:var(--surface2);border:1px solid var(--glass-border);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text);">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('statusDate').value='';pollLiveStatus()" style="font-size:11px;">Live</button>
       </div>
-      <div id="liveCards" class="grid grid-4" style="margin-bottom:14px;">
+      <div id="liveCards" class="grid grid-4" style="margin-bottom:10px;">
         <div class="card"><div class="card-hd"><h3>Total</h3></div><div id="liveTotal" style="font-size:28px;font-weight:700;">—</div></div>
         <div class="card"><div class="card-hd"><h3>Booked</h3></div><div id="liveBooked" style="font-size:28px;font-weight:700;color:var(--green);">—</div></div>
         <div class="card"><div class="card-hd"><h3>Failed</h3></div><div id="liveFailed" style="font-size:28px;font-weight:700;color:var(--red);">—</div></div>
         <div class="card"><div class="card-hd"><h3>Pending</h3></div><div id="livePending" style="font-size:28px;font-weight:700;color:var(--accent);">—</div></div>
       </div>
-      <div id="liveTableWrap" class="card" style="margin-bottom:14px;display:none;">
-        <table class="res-table">
-          <thead><tr><th>Student</th><th>Level</th><th>City</th><th>Status</th><th>Updated</th></tr></thead>
-          <tbody id="liveTableBody"></tbody>
-        </table>
+      <div id="liveLogWrap" class="card" style="margin-bottom:14px;padding:0;">
+        <div id="liveLogBody" style="max-height:500px;overflow-y:auto;padding:4px 0;"></div>
       </div>
 
       <div class="section-title fade-up fade-up-d3" style="margin:20px 0 10px;">Students</div>
@@ -1363,8 +1363,10 @@ let livePollTimer = null;
 function startLivePoll() {
   stopLivePoll();
   document.getElementById("liveStatusDot").style.background = "var(--green)";
-  livePollTimer = setInterval(pollLiveStatus, 2000);
   pollLiveStatus();
+  livePollTimer = setInterval(() => {
+    if (!document.getElementById("statusDate").value) pollLiveStatus();
+  }, 3000);
 }
 
 function stopLivePoll() {
@@ -1374,7 +1376,9 @@ function stopLivePoll() {
 
 async function pollLiveStatus() {
   try {
-    const resp = await apiFetch(`${BASE}/api/live-status`, { signal: AbortSignal.timeout(3000) });
+    const dateVal = document.getElementById("statusDate").value;
+    const url = dateVal ? `${BASE}/api/live-status?date=${dateVal}` : `${BASE}/api/live-status`;
+    const resp = await apiFetch(url, { signal: AbortSignal.timeout(5000) });
     const data = await resp.json();
     if (!data || !data.summary) return;
     const s = data.summary;
@@ -1382,21 +1386,99 @@ async function pollLiveStatus() {
     document.getElementById("liveBooked").textContent = s.booked;
     document.getElementById("liveFailed").textContent = s.failed;
     document.getElementById("livePending").textContent = s.pending;
-    const tbody = document.getElementById("liveTableBody");
-    const wrap = document.getElementById("liveTableWrap");
-    if (data.students && data.students.length) {
-      wrap.style.display = "";
-      tbody.innerHTML = data.students.map(st => {
-        let color;
-        if (st.status === "confirmed" || st.status === "submitted") color = "var(--green)";
-        else if (st.status === "failed") color = "var(--red)";
-        else color = "var(--accent)";
-        return `<tr><td>${escHtml(st.name)}</td><td><span class="exam-tag exam-${st.level[0]}">${escHtml(st.level)}</span></td><td>${escHtml(st.city)}</td><td><span style="color:${color};font-weight:500;">${escHtml(st.status)}</span></td><td style="font-size:11px;color:var(--text3);">${escHtml(st.updated_at)}</td></tr>`;
-      }).join("");
+
+    // Build combined log: student statuses + logs + results
+    const entries = [];
+
+    // 1. Student status entries
+    if (data.students) {
+      for (const st of data.students) {
+        const stat = (st.status || "").toLowerCase();
+        let icon, iconColor;
+        if (stat === "confirmed" || stat === "submitted") {
+          icon = "\u2705"; iconColor = "var(--green)";
+        } else if (stat === "failed") {
+          icon = "\u274C"; iconColor = "var(--red)";
+        } else {
+          icon = "\u23F3"; iconColor = "var(--accent)";
+        }
+        let detail = "";
+        if (st.reference) detail += `Ref: ${escHtml(st.reference)} `;
+        if (st.exam_date) detail += `Exam: ${escHtml(st.exam_date)}`;
+        if (st.error) detail += `Error: ${escHtml(st.error)}`;
+        entries.push({
+          time: st.updated_at || "",
+          html: `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--glass-border);">
+            <span style="font-size:16px;flex-shrink:0;">${icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div><strong>${escHtml(st.name)}</strong> <span class="exam-tag exam-${(st.level||'A')[0]}">${escHtml(st.level)}</span> ${escHtml(st.city)}</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+                <span style="color:${iconColor};font-weight:500;">${escHtml(st.status)}</span>
+                ${detail ? '<span style="color:var(--text3);margin-left:8px;">' + detail + '</span>' : ''}
+              </div>
+            </div>
+            <span style="font-size:11px;color:var(--text3);flex-shrink:0;white-space:nowrap;">${escHtml(_fmtTime(st.updated_at))}</span>
+          </div>`
+        });
+      }
+    }
+
+    // 2. Log entries
+    if (data.logs) {
+      for (const log of data.logs) {
+        let icon = "\u2139\uFE0F";
+        const lv = (log.level || "").toLowerCase();
+        if (lv === "error" || lv === "critical") icon = "\u26A0\uFE0F";
+        else if (lv === "success" || lv === "booked") icon = "\u2705";
+        else if (lv === "warn" || lv === "warning") icon = "\u26A0\uFE0F";
+        entries.push({
+          time: log.time || "",
+          html: `<div style="display:flex;align-items:flex-start;gap:10px;padding:6px 14px;border-bottom:1px solid var(--glass-border);font-size:12px;">
+            <span style="font-size:13px;flex-shrink:0;">${icon}</span>
+            <div style="flex:1;min-width:0;color:var(--text2);">
+              ${log.student_key ? '<strong>' + escHtml(log.student_key) + '</strong>: ' : ''}${escHtml(log.message)}
+            </div>
+            <span style="font-size:11px;color:var(--text3);flex-shrink:0;white-space:nowrap;">${_fmtTime(log.time)}</span>
+          </div>`
+        });
+      }
+    }
+
+    // 3. Results
+    if (data.results) {
+      for (const r of data.results) {
+        const stat = (r.status || "").toLowerCase();
+        let icon = stat === "confirmed" || stat === "submitted" ? "\u2705" : "\u274C";
+        entries.push({
+          time: r.updated_at || "",
+          html: `<div style="display:flex;align-items:flex-start;gap:10px;padding:6px 14px;border-bottom:1px solid var(--glass-border);font-size:12px;">
+            <span style="font-size:13px;flex-shrink:0;">${icon}</span>
+            <div style="flex:1;min-width:0;color:var(--text2);">
+              <strong>${escHtml(r.name)}</strong> — ${escHtml(r.status)}${r.reference ? ' (Ref: ' + escHtml(r.reference) + ')' : ''}
+            </div>
+            <span style="font-size:11px;color:var(--text3);flex-shrink:0;white-space:nowrap;">${_fmtTime(r.updated_at)}</span>
+          </div>`
+        });
+      }
+    }
+
+    // Sort by time descending (newest first), then render
+    entries.sort((a, b) => b.time.localeCompare(a.time));
+    const container = document.getElementById("liveLogBody");
+    if (entries.length) {
+      container.innerHTML = entries.map(e => e.html).join("");
     } else {
-      wrap.style.display = "none";
+      container.innerHTML = '<div style="text-align:center;padding:40px 14px;color:var(--text3);font-size:13px;">No activity for ' + (dateVal || 'today') + '</div>';
     }
   } catch { /* ignore */ }
+}
+
+function _fmtTime(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch { return iso; }
 }
 
 // ── Goethe Schedule ──
