@@ -963,6 +963,16 @@ Dead man switch fired falsely every 5 min during idle. Only `deadman.ping()` cal
 - `9a003f9` — smoke CI fix
 - **122 total commits on main**
 
+## 18 Jun 2026 - Session 14: Live Dashboard + Level Filter + Goethe Scraper
+
+### Done
+1. **Live dashboard** — 4 summary cards (Total/Booked/Failed/Pending) + per-student table with color-coded statuses, auto-refreshes every 2s while bot runs, green dot indicator
+2. **Exam level filter** — `<select>` dropdown (All/A1/A2/B1) next to Start button. Filters students by level before booking starts
+3. **Goethe schedule scraper** — `goethe_scraper.py` fetches live exam dates from goethe.de. `/api/v1/goethe-schedule` endpoint. Displayed in dashboard with Refresh button. 1-hour cache
+
+### Commits
+- `4877e01` — feat: live dashboard, level filter, Goethe schedule scraper
+
 ### Blocked Until External Setup
 - CAPTCHA_API_KEY env var on Railway (2Captcha ~$3)
 - PROXY_LIST env var with valid proxies
