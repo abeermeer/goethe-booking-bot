@@ -31,7 +31,7 @@
 - **AI Assistant (Alexa)** — Gemini 2.5 Flash Lite chatbot in the dashboard. Ask about booking status, student info, logs, or retry a student — all via natural language.
 - **Web Dashboard** — Full admin panel with analytics cards, queue management, activity log, scheduling, countdown timers.
 - **Anti-Detection** — Human-like delays, mouse jitter, Cloudflare/503 detection, random user agents.
-- **Security** — Server-side sessions with 24hr expiry, constant-time password compare, rate limiting (5/5min), security headers, HTTPS redirect option.
+- **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, Sentry error tracking, audit log (`/api/audit-log`), HTTPS redirect option.
 
 ## Architecture
 
@@ -39,22 +39,27 @@
 ┌──────────────────────────────────────┐     ┌──────────────────────────────────────┐
 │  Frontend (Netlify - FREE)           │     │  Backend (Railway/VPS)               │
 │                                      │     │                                      │
-│  frontend/index.html                 │────▶│  /api/*  (30+ authenticated routes)   │
+│  frontend/index.html                 │────▶│  /api/*  (35+ authenticated routes)   │
 │  (pure HTML/CSS/JS)                  │     │                                      │
-│                                      │     │  ┌──────────────────────────────┐    │
-│  Connect via Backend URL             │     │  │  booking_helper.py           │    │
-│  Live logs via SSE (EventSource)     │     │  │  └─ selector_fallbacks.py    │    │
-│  AI chat panel                       │     │  │  └─ proxy_rotator.py         │    │
-│  Countdown timers                    │     │  │  └─ circuit_breaker.py       │    │
-│  Queue management                    │     │  │  └─ confirmation_parser.py   │    │
-│  No build step needed!               │     │  ├── student_queue.py           │    │
-└──────────────────────────────────────┘     │  ├── deadman.py (heartbeat)     │    │
-                                             │  ├── alexa.py (AI assistant)   │    │
-                                             │  ├── db.py (SQLite persistence) │    │
-                                             │  └── notifications.py           │    │
-                                             │                                  │
-                                             │  Requires Chrome + Python 3.9+   │
-                                             └──────────────────────────────────┘
+│  Swagger docs at /api/docs/          │     │  ┌──────────────────────────────┐    │
+│  Dark/light theme toggle             │     │  │  booking_helper.py           │    │
+│  Offline PWA (Service Worker)        │     │  │  └─ selector_fallbacks.py    │    │
+│  Error boundary + keyboard a11y      │     │  │  └─ proxy_rotator.py         │    │
+│  Connect via Backend URL             │     │  │  └─ circuit_breaker.py       │    │
+│  Live logs via SSE (EventSource)     │     │  │  └─ confirmation_parser.py   │    │
+│  AI chat panel (Gemini)              │     │  ├── student_queue.py           │    │
+│  Countdown timers                    │     │  ├── deadman.py (heartbeat)     │    │
+│  Queue management                    │     │  ├── alexa.py (AI assistant)   │    │
+│  No build step needed!               │     │  ├── db.py (SQLite + Alembic)  │    │
+└──────────────────────────────────────┘     │  ├── notifications.py           │    │
+                                              │  ├── alembic/ (migrations)     │    │
+                                              │  │                              │    │
+                                              │  Extra endpoints:              │    │
+                                              │  /api/health · /api/audit-log  │    │
+                                              │  /api/refresh · /api/docs/     │    │
+                                              │  Sentry · CSP/HSTS headers     │    │
+                                              │  Requires Chrome + Python 3.9+ │    │
+                                              └──────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -129,10 +134,13 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 
 ## Security
 
-- **Auth:** Server-side sessions with 24hr expiry. Logout invalidates immediately.
-- **Rate Limiting:** 5 login attempts per 5 minutes per IP (returns 429).
-- **Headers:** `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`.
+- **Auth:** Server-side sessions with 24hr expiry. Logout invalidates immediately. Token rotation via `/api/refresh`.
+- **Rate Limiting:** 5 login attempts per 5 minutes per IP (returns 429 with `Retry-After` + `X-RateLimit-Remaining` headers).
+- **Headers:** CSP (`default-src 'self'`), HSTS (`max-age=31536000; preload`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`.
+- **CORS:** Whitelist-based — only Netlify + Railway + localhost allowed.
 - **HTTPS:** Optional enforcement via `ENFORCE_HTTPS` env var.
+- **Monitoring:** Sentry error tracking (via `SENTRY_DSN` env var).
+- **Audit:** `/api/audit-log` tracks all logins, bot starts/stops, token refreshes.
 - **Passwords:** Constant-time comparison via `hmac.compare_digest`.
 - **Tokens:** Stored server-side in SQLite. Revocable.
 - **Uploads:** 10MB limit on config file upload.
@@ -154,16 +162,20 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 | `db.py` | SQLite persistence layer |
 | `notifications.py` | Telegram + Email notifications |
 | `gui.py` | Desktop GUI (Tkinter) |
-| `Dockerfile` | Container for Railway/Render deploy |
+| `Dockerfile` | Multi-stage container for Railway/Render deploy |
+| `frontend/sw.js` | Service Worker for PWA offline support |
+| `alembic/` | DB schema migrations (Alembic) |
+| `tests/test_e2e.py` | E2E Playwright tests |
 | `config.csv` | Student data (gitignored) |
 
 ## Testing
 
-66 pytest tests covering all modules:
+66+ pytest tests covering all modules (+ E2E Playwright tests):
 
 ```bash
 pytest -q
 # .......................................................... 66 passed
+pytest tests/test_e2e.py -v  # requires: playwright install chromium
 ```
 
 | Module | Tests |
@@ -204,6 +216,7 @@ Push to GitHub → Railway → New Project → Deploy from GitHub repo. Includes
 | `CIRCUIT_BREAKER_THRESHOLD` | No | 10 | Consecutive failures before cooldown |
 | `CIRCUIT_BREAKER_COOLDOWN` | No | 900 | Cooldown seconds after threshold |
 | `MAX_SMART_RETRIES` | No | 2 | Full-flow retry attempts per student |
+| `SENTRY_DSN` | No | — | Sentry DSN for error tracking |
 | `ENFORCE_HTTPS` | No | — | Redirect HTTP → HTTPS |
 | `PORT` | No | 5000 | Backend server port |
 
@@ -219,5 +232,5 @@ Push to GitHub → Railway → New Project → Deploy from GitHub repo. Includes
 <p align="center">
   <sub>Built by <a href="https://github.com/abeermeer">Abeer Meer</a></sub><br>
   <sub>© 2026 Abeer Meer. Licensed under the <a href="LICENSE">MIT License</a>.</sub><br>
-  <sub>66 tests · 12 modules · Production-grade architecture</sub>
+  <sub>66+ tests · 15 modules · Swagger · Sentry · PWA · Alembic · Production-grade</sub>
 </p>
