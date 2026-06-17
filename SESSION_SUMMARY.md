@@ -64,12 +64,19 @@
 - Removed debug files: `debug_blocks.py`, `debug_cities.py`, `debug_cities2.py`, `debug_cities3.py`, `debug_between.py`, `debug_sections.py`, `inspect_html.py`
 - Fixed October month typo in MONTHS dict (was `9`, should be `10`)
 
+## Key Decisions & Answers
+
+- **Page load time (11-13s):** Normal — Goethe's server response time, not a bug. Timeouts are already burst-optimized (15s doc ready, 10s finder). Reducing them risks missing the slot due to timeout-retry loops. **Decision: keep current timeouts.**
+- **Bot vs Human at peak traffic:** Bot's advantage is in refresh frequency (2-3s vs 10-30s manual) and click speed (~50ms vs 500ms+ human). During page load itself, both wait the same. But bot never misses a cycle.
+- **Bot vs other GitHub Goethe bots:** This project is significantly more advanced — 38 modules, circuit breaker, selector fallbacks, proxy rotation, parallel students, dashboard, AI assistant, 66 tests, CI/CD. Most GitHub bots are single-file weekend projects.
+
 ## Git History (this session)
 
 ```
 ec38293 fix(goethe_scraper): rewrite parser — 26 entries across 3 cities (was 9)
 55e284a fix(api): make students optional in StartRequest and ScheduleStartRequest
 7de2508 feat(live-status): full log view with date picker
+de494c0 docs: update session summary with validation fix + live log view + date picker
 ```
 
 ## Files Modified
