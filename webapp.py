@@ -96,7 +96,11 @@ PROJECT_DIR = Path(__file__).parent.absolute()
 sys.path.insert(0, str(PROJECT_DIR))
 
 import booking_helper as bot
-import db
+_db_url = os.environ.get("DATABASE_URL", "").strip()
+if _db_url.startswith("postgresql://") or _db_url.startswith("postgres://"):
+    import database as db
+else:
+    import db
 import alexa
 import student_queue as sqmod
 from deadman import DeadManSwitch
