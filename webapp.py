@@ -984,8 +984,10 @@ def api_form_scan():
     if not students:
         return jsonify({"ok": False, "error": "No students provided or loaded"}), 400
 
-    student = students[0]
+    student = dict(students[0])
     name = student.get("name", "?")
+    if data.get("password"):
+        student["password"] = data["password"]
 
     try:
         r = bot.scan_booking_form(student, logging.getLogger("form_scan"))
