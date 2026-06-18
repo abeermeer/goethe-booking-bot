@@ -42,14 +42,14 @@
   - **Config Validation** — Auto-validates CSV on upload: checks required fields, email format, valid level (A1-C2), city, DOB, datetime format — reports all errors at once.
   - **Slot Pre-check** — `POST /api/slots/check` opens exam page and scans for "Book Now" buttons before starting the bot. Returns availability per student.
   - **Form Scanner** — `POST /api/form/scan` logs into Goethe, navigates booking form, scans all form fields, compares against `selector_fallbacks.py`. Pre-flight check before actual booking.
-  - **Cookie-based Login** — Save Goethe login cookies from local machine via `scripts/save_cookies_simple.py`, reuse on Railway to bypass reCAPTCHA.
+  - **Local Form Scanner** — `scripts/scan_form_local.py` runs form scanner on your laptop (residential IP bypasses reCAPTCHA). Railway-based form scanner blocked by reCAPTCHA v3 from datacenter IPs. Cookie replay approach also abandoned (Goethe uses HttpOnly session cookies).
   - **Booking History** — `GET /api/history` + full-text search `GET /api/history/search?q=...` across queue history and logs.
 - **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, brute force account lockout (30 fails = 15min ban), Sentry error tracking, audit log (`/api/audit-log`), SRI on static assets, Dependabot + pip-audit CI, secrets rotation script, HTTPS redirect option.
 - **Monitoring** — Health endpoint (`/api/health`) with DB + Chrome + circuit breaker checks, business metrics (`/api/metrics`), structured JSON logging to stdout, uptime monitor script, Telegram alerting script.
 - **Reliability** — Zero-downtime health gate in CI/CD, automated backup/restore script, rollback plan, staging environment reference, BCP docs.
-- **Live Integration Tests** — Nightly CI cron (2 AM UTC) tests real goethe.de portal: exam pages load, login page, schedule scraper, slot pre-check.
-- **Graceful Shutdown** — SIGTERM handler checkpoints running students on Railway container restart so progress is never lost.
-- **Real-Time WebSocket Logs** — Replace polling: booking logs stream to dashboard instantly via WebSocket at `/api/ws/logs`.
+  - **Nightly Live Integration Tests** — `.github/workflows/live-integration.yml` cron at 2 AM UTC — tests real goethe.de portal: exam pages HTTP 200, login page accessible, schedule scraper returns entries, slot pre-check doesn't crash.
+  - **Graceful Shutdown** — SIGTERM/SIGINT handler checkpoints all in-progress students via `checkpoint_all_running_students()` before Railway container stops. No progress lost on restart.
+- **Real-Time WebSocket Logs** — `flask-sock`-based WebSocket at `/api/ws/logs`. Logging handler pushes all logs to connected clients. Frontend `connectWebSocket()` + `appendToLiveFeed()`. No more polling.
 
 ## Architecture
 
@@ -75,7 +75,7 @@
                                               │  ├── deadman.py (heartbeat)           │
                                               │  ├── alexa.py (AI assistant)          │
                                               │  ├── async_worker.py (job queue)      │
-                                              │  ├── websocket_handler.py (stub)      │
+  │  ├── websocket_handler.py (real-time)     │
                                               │  ├── plugin_manager.py (hooks)        │
                                               │  ├── alembic/ (migrations)            │
                                               │  │                                     │

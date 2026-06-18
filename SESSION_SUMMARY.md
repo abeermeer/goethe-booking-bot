@@ -469,11 +469,16 @@ Claude gave an 80+ column risk table. After actual verification:
 - [ ] Screen recording tool ready (OBS)
 - [ ] `python webapp.py` ready to start at 10:23 AM
 
+### Pushed to GitHub (Session 22)
+- `4fc3615` — docs: session summary — Claude risk reality check, pre-live-test checklist
+- Visibility toggled: **public → private** (after testing)
+- Repo confirmed under `abeermeer` org (not `abeeruniversity`). `gh` auth was wrong account — used `GH_TOKEN` from Windows Credential Manager to fix.
+
 ### Current Deployments
 
 | Platform | Head | Status |
 |----------|------|--------|
-| GitHub | `177218b` | ✅ Pushed |
+| GitHub | `4fc3615` | ✅ Private |
 | Netlify | auto | ✅ Latest UI live |
 | Railway | auto | ✅ Healthy |
 
