@@ -299,4 +299,19 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 | Netlify | ✅ Deployed |
 | Railway | ✅ Building |
 
+### Smoke Test Fix (Round 3 — Real Real Fix)
+- **Root cause:** Added `from bs4 import BeautifulSoup` at module level in `booking_helper.py` but `beautifulsoup4` was missing from `requirements.txt`. CI install missed it → `ModuleNotFoundError` on server start → health check got empty response.
+- **Fix:** Added `beautifulsoup4>=4.12` to `requirements.txt` + moved import inside `check_slot_availability()` function to decouple from core server startup.
+
+| Commit | Message | 
+|--------|---------|
+| `8ed0c69` | fix: add beautifulsoup4 to requirements.txt, move import inside function |
+
+### Final Deploy Status
+| Platform | Version | Status |
+|----------|---------|--------|
+| GitHub | `8ed0c69` | ✅ Pushed |
+| Netlify | latest | ✅ Deployed |
+| Railway | build `ae7e69c7` | ✅ Health OK
+
 
