@@ -280,8 +280,23 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 | Netlify | ✅ Deployed | [goethe-booking-dashboard.netlify.app](https://goethe-booking-dashboard.netlify.app) |
 | Railway | ✅ Deployed | [goethe-booking-bot-production-092f.up.railway.app](https://goethe-booking-bot-production-092f.up.railway.app) |
 
-### Smoke Test Fix
+### Smoke Test Fix (Round 1)
 - **Root cause:** `circuit_breaker.py` refactor removed `threshold` and `cooldown` properties. `/api/health` was still calling `cb.threshold` and `cb.cooldown`.
 - **Fix:** Removed those two fields from the health endpoint response.
+
+### Smoke Test Fix (Round 2 — Real Fix)
+- **Root cause:** `circuit_breaker.py` class-level dict `_CONFIG` used `os.environ.get()` but `import os` was missing. This caused a `NameError` at class definition time → module import failed → server crash on startup.
+- **Fix:** Added `import os` at top of `circuit_breaker.py`.
+
+| Commit | Message | 
+|--------|---------|
+| `405612a` | fix: add missing `import os` in circuit_breaker.py |
+
+### Final Deploy Status
+| Platform | Status |
+|----------|--------|
+| GitHub | ✅ `405612a` pushed |
+| Netlify | ✅ Deployed |
+| Railway | ✅ Building |
 
 
