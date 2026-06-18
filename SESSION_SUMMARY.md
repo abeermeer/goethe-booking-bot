@@ -512,16 +512,17 @@ Multi-agent research on **Pakistan vs India booking systems**:
 | `/help` | All commands |
 
 **Integration:**
-- Bridge functions in `webapp.py`: `start_bot_from_telegram()`, `stop_all()`, `check_slot()`, `restart_bot()`
+- Bridge functions in `webapp.py`: `start_bot_from_telegram()`, `stop_all()`, `check_slot()`, `restart_bot()`, `load_config_csv()`
 - Auto-starts on boot if `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env vars are set
 - Chat ID filter — ignores unauthorized senders
 - End-of-run summary sent via commander (shows results for each student)
-- 17 unit tests in `tests/test_telegram_commander.py` (all passing)
+- **CSV upload via document** — send a `.csv` file to the chat → bot downloads via `getFile` API, copies to `config.csv`, parses students, replies with count + names
+- 20 unit tests in `tests/test_telegram_commander.py` (all passing)
 
 **Files:**
-- `telegram_commander.py` — new (269 lines)
-- `tests/test_telegram_commander.py` — new (169 lines)
-- `webapp.py` — modified (import, global, bridge functions, startup, EOR notification)
+- `telegram_commander.py` — new (~310 lines)
+- `tests/test_telegram_commander.py` — new (200 lines)
+- `webapp.py` — modified (import, global, bridge functions, startup, EOR notification, `load_config_csv`)
 
 ### Session 23 — June 18 PM — Client Clarification + Handoff File
 
@@ -550,6 +551,7 @@ Multi-agent research on **Pakistan vs India booking systems**:
 
 | Commit | Message |
 |--------|---------|
+| `74b1075` | feat: CSV upload via Telegram document + SESSION_SUMMARY.md update |
 | `fae1ced` | feat: Telegram Commander with /start /stop /status /check /schedule /history /restart /notify /help |
 | `d7fb61d` | docs: session summary — Session 23, client clarification, handoff file created |
 | `b8ffdf4` | docs: session summary — India RND complete (Webshop vs pr_finder, PTN vs PSID) |
