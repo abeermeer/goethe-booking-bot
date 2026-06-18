@@ -699,7 +699,7 @@ def check_slot_availability(student: Dict[str, str], logger: logging.Logger) -> 
 
 # ── Form scanner (pre-flight check) ──
 
-def scan_booking_form(student: Dict[str, str], logger: logging.Logger) -> Dict:
+def scan_booking_form(student: Dict[str, str], logger: logging.Logger, cookies: Optional[List[Dict]] = None) -> Dict:
     """Login to Goethe, open the booking form, and scan all form fields.
     Compares found fields against selector_fallbacks known keys.
     Returns {ok: bool, fields: List[Dict], known_keys_found: int, known_keys_total: int, message: str}."""
@@ -708,16 +708,35 @@ def scan_booking_form(student: Dict[str, str], logger: logging.Logger) -> Dict:
     try:
         from selector_fallbacks import ELEMENT_SELECTORS
         driver = create_driver(use_headless=True, logger=logger)
-        driver.get("https://login.goethe.de/cas/login")
-        wait_for_document_ready(driver)
         from selenium.webdriver.common.by import By
         from selenium.common.exceptions import NoSuchElementException
-        time.sleep(2)
 
-        ok = login_to_goethe(driver, student.get("email", ""), student.get("password", ""), logger)
-        if not ok:
-            result["message"] = "Login failed: " + get_last_login_error()
-            return result
+        # Try saved cookies first
+        logged_in = False
+        if cookies:
+            driver.get("https://login.goethe.de/cas/login")
+            wait_for_document_ready(driver)
+            time.sleep(1)
+            for c in cookies:
+                try:
+                    driver.add_cookie(c)
+                except Exception:
+                    pass
+            driver.get("https://login.goethe.de/cas/login")
+            wait_for_document_ready(driver)
+            time.sleep(2)
+            if "login" not in driver.current_url.lower():
+                logged_in = True
+                logger.info("✓ Logged in using saved cookies")
+
+        if not logged_in:
+            driver.get("https://login.goethe.de/cas/login")
+            wait_for_document_ready(driver)
+            time.sleep(2)
+            ok = login_to_goethe(driver, student.get("email", ""), student.get("password", ""), logger)
+            if not ok:
+                result["message"] = "Login failed: " + get_last_login_error()
+                return result
 
         exam_url = get_exam_url(student.get("level", student.get("exam_level", "A1")))
         logger.info("Form scanner: navigating to %s", exam_url)

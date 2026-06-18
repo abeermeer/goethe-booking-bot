@@ -992,11 +992,45 @@ def api_form_scan():
         student["password"] = data["password"]
 
     try:
-        r = bot.scan_booking_form(student, logging.getLogger("form_scan"))
+        cookies = None
+        raw_cookies = db.get_state("goethe_cookies", "")
+        if raw_cookies:
+            try:
+                cookies = json.loads(raw_cookies)
+            except Exception:
+                pass
+        r = bot.scan_booking_form(student, logging.getLogger("form_scan"), cookies=cookies)
         r["name"] = name
         return jsonify({"ok": True, "result": r})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+# ── Goethe Cookies (for form scanner) ──
+import json
+
+@bp.route("/goethe-cookies", methods=["GET", "POST", "DELETE"])
+@require_auth
+def api_goethe_cookies():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        cookies = data.get("cookies", [])
+        if not cookies:
+            return jsonify({"ok": False, "error": "No cookies provided"}), 400
+        db.set_state("goethe_cookies", json.dumps(cookies))
+        return jsonify({"ok": True, "count": len(cookies)})
+    elif request.method == "DELETE":
+        db.delete_state("goethe_cookies")
+        return jsonify({"ok": True})
+    else:
+        raw = db.get_state("goethe_cookies", "")
+        if not raw:
+            return jsonify({"ok": False, "has_cookies": False, "count": 0})
+        try:
+            cookies = json.loads(raw)
+            return jsonify({"ok": True, "has_cookies": True, "count": len(cookies)})
+        except Exception:
+            return jsonify({"ok": False, "has_cookies": False, "count": 0})
 
 
 # ── Booking history ──

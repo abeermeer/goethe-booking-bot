@@ -861,6 +861,7 @@
           <button class="btn btn-outline btn-sm" onclick="formScan()">Form Scanner</button>
           <input type="email" id="goetheEmail" placeholder="Goethe email" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface1);color:var(--text1);font-size:12px;width:160px;">
           <input type="password" id="goethePassword" placeholder="Goethe password" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface1);color:var(--text1);font-size:12px;width:140px;">
+          <button class="btn btn-outline btn-sm" onclick="checkCookieStatus()" id="cookieStatusBtn" style="font-size:11px;">Cookies: ?</button>
         </div>
         <div id="configInfo" style="font-size:13px;color:var(--text2);"></div>
         <div id="configPreview" class="cfg-preview"></div>
@@ -1090,6 +1091,7 @@ async function connectBackend(retries = 2) {
       await loadConfigFromBackend();
       await refreshSchedule();
       await loadScheduleStatus();
+      checkCookieStatus();
       startStatusPoll();
       return;
     } catch {
@@ -1296,9 +1298,25 @@ async function formScan() {
       txt += `>\n`;
     }
     el.textContent = txt;
+    checkCookieStatus();
   } catch (e) {
     el.textContent = "Scan failed: " + e.message;
     showToast("Form scan failed", "error");
+  }
+}
+
+// ── Goethe Cookies Status ──
+async function checkCookieStatus() {
+  if (!connected) return;
+  const btn = document.getElementById("cookieStatusBtn");
+  btn.textContent = "Cookies: ...";
+  try {
+    const resp = await apiFetch(`${BASE}/api/goethe-cookies`, { signal: AbortSignal.timeout(5000) });
+    const data = await resp.json();
+    btn.textContent = data.has_cookies ? "Cookies: ✅ " + data.count : "Cookies: ❌";
+    btn.title = data.has_cookies ? `${data.count} cookies saved — form scanner works without login` : "No saved cookies — run scripts/save_goethe_cookies.py";
+  } catch {
+    btn.textContent = "Cookies: ?";
   }
 }
 
