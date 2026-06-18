@@ -1,0 +1,24 @@
+name: Live Integration
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+      - name: Run live integration tests
+        run: pytest tests/test_live_integration.py -v --tb=short
+        continue-on-error: true

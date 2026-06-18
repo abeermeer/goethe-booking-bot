@@ -106,9 +106,48 @@ import alexa
 import goethe_scraper
 import student_queue as sqmod
 from deadman import DeadManSwitch
+import signal
+
+# WebSocket broadcaster (stub-safe — no-op if flask-sock missing)
+from websocket_handler import broadcaster as ws_broadcaster
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB limit for uploads
+
+# ── WebSocket setup ──
+from websocket_handler import setup_websocket
+sock = setup_websocket(app)
+ws_broadcaster.start()
+
+class WebSocketLogHandler(logging.Handler):
+    """Logging handler that pushes all log records to WebSocket clients."""
+    def emit(self, record):
+        try:
+            ws_broadcaster.push({
+                "type": "log",
+                "time": self.formatter.formatTime(record) if self.formatter else record.created,
+                "data": self.format(record),
+            })
+        except Exception:
+            pass
+
+# Attach to all loggers
+_ws_handler = WebSocketLogHandler()
+_ws_handler.setFormatter(logging.Formatter("%(message)s"))
+logging.getLogger().addHandler(_ws_handler)
+
+# ── Graceful shutdown ──
+def _handle_shutdown(signum, frame):
+    import logging as _lg
+    _lg.getLogger("shutdown").warning("Signal %s received, checkpointing...", signum)
+    try:
+        count = bot.checkpoint_all_running_students()
+        _lg.getLogger("shutdown").info("Checkpointed %d running student(s)", count)
+    except Exception as exc:
+        _lg.getLogger("shutdown").error("Checkpoint failed: %s", exc)
+
+signal.signal(signal.SIGTERM, _handle_shutdown)
+signal.signal(signal.SIGINT, _handle_shutdown)
 
 bp = Blueprint("api", __name__)
 
@@ -314,6 +353,10 @@ def run_students_web(students: List[Dict], headless: bool, immediate: bool = Fal
             student_results.append(result)
 
         db.update_student_status(key, result.get("status", "failed"), result)
+        try:
+            ws_broadcaster.push({"type": "status", "name": name, "status": result.get("status", "failed"), "time": time.time()})
+        except Exception:
+            pass
 
         status = result.get("status", "failed")
         if status == "confirmed":

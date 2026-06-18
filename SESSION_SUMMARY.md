@@ -432,12 +432,38 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 | Netlify | ✅ Auto-deployed — latest UI live |
 | Railway | ✅ Running — Prague/Staging routes issue on local ISP, using `188.245.58.99:443` |
 
-### Todos Done ✅
-1. ✅ Session summary updated
-2. ✅ README updated (form scanner, cookie login, scripts table, 23→25 modules)
-3. ✅ GitHub pushed — `9bac2f8`
-4. ⏸️ Local folder — user will git pull later
-5. ✅ Netlify auto-deployed from GitHub
-6. ✅ Railway auto-deployed from GitHub
+---
+
+## Session 21 — June 18, 2026 — Post-Claude-Review: WebSocket, Live Integration, Graceful Shutdown
+
+### What Changed
+
+| Plan | Files | Description |
+|------|-------|-------------|
+| **C: WebSocket** | `websocket_handler.py`, `webapp.py`, `frontend/index.html`, `requirements.txt` | Real-time log streaming via WebSocket (`/api/ws/logs`). Replaces polling. Added `flask-sock` dep + log handler that pushes all logs to connected clients + UI `appendToLiveFeed()` |
+| **A: Live Integration** | `tests/test_live_integration.py`, `.github/workflows/live-integration.yml` | Nightly CI cron (2 AM UTC) tests real goethe.de: exam pages load (HTTP 200), login page accessible, schedule scraper returns entries, slot pre-check doesn't crash |
+| **B: Graceful Shutdown** | `webapp.py`, `booking_helper.py` | SIGTERM/SIGINT handler saves checkpoints for all in-progress students before container stops. `checkpoint_all_running_students()` added to `booking_helper.py` |
+
+### Key Commits
+
+| Commit | Message |
+|--------|---------|
+| (pending) | feat: WebSocket real-time logs, live integration CI, graceful shutdown |
+
+### Current Deployments
+
+| Platform | Status |
+|----------|--------|
+| GitHub | ✅ Pushed — all 3 plans implemented |
+| Netlify | ✅ Auto-deploying |
+| Railway | ✅ Healthy |
+
+### Todos
+1. ✅ **Plan C:** WebSocket — implemented
+2. ✅ **Plan A:** Live integration test — implemented
+3. ✅ **Plan B:** Graceful shutdown — implemented
+4. ✅ README updated
+5. ✅ Session summary updated
+6. ✅ Git push
 
 

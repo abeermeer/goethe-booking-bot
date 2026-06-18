@@ -1094,6 +1094,7 @@ async function connectBackend(retries = 2) {
       await loadScheduleStatus();
       checkCookieStatus();
       startStatusPoll();
+      connectWebSocket();
       return;
     } catch {
       if (attempt < retries) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
@@ -1128,6 +1129,53 @@ async function fetchStatus() {
     }
     running = data.running;
   } catch { /* ignore */ }
+}
+
+// ── WebSocket ──
+let ws = null;
+let wsReconnectTimer = null;
+
+function connectWebSocket() {
+  if (ws) try { ws.close(); } catch(e) {}
+  if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+  const url = BASE.replace(/^http/, "ws") + "/api/ws/logs";
+  try {
+    ws = new WebSocket(url);
+    ws.onmessage = function(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "log" && msg.data) {
+          appendToLiveFeed(msg.data, "log");
+        } else if (msg.type === "status" && msg.name) {
+          const icon = msg.status === "confirmed" ? "✅" : msg.status === "failed" ? "❌" : "⏳";
+          appendToLiveFeed(`${icon} ${msg.name}: ${msg.status}`, "status");
+        }
+      } catch(ex) {}
+    };
+    ws.onclose = function() {
+      ws = null;
+      wsReconnectTimer = setTimeout(connectWebSocket, 5000);
+    };
+    ws.onerror = function() {
+      // will trigger onclose
+    };
+  } catch(ex) {}
+}
+
+function disconnectWebSocket() {
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+  if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+}
+
+function appendToLiveFeed(text, type) {
+  const container = document.getElementById("liveLogBody");
+  if (!container) return;
+  const icon = type === "status" ? "●" : type === "error" ? "⚠️" : "ℹ️";
+  const div = document.createElement("div");
+  div.style.cssText = "display:flex;align-items:flex-start;gap:10px;padding:4px 14px;border-bottom:1px solid var(--glass-border);font-size:12px;color:var(--text2);";
+  div.innerHTML = "<span style=\"font-size:12px;flex-shrink:0;\">" + icon + "</span><div style=\"flex:1;\">" + escHtml(text) + "</div>";
+  container.insertBefore(div, container.firstChild);
+  while (container.children.length > 200) container.removeChild(container.lastChild);
 }
 
 function updateBadge(isRunning) {

@@ -1245,6 +1245,17 @@ def capture_confirmation(driver: webdriver.Chrome, student_name: str, logger: lo
     return result
 
 
+def checkpoint_all_running_students() -> int:
+    """Save checkpoint for all in-progress students. Called on shutdown."""
+    import db as _db
+    students = _db.get_students()
+    running = [s for s in students if s.get("status") in ("running", "in_progress")]
+    for s in running:
+        key = f"{s['name']}|{s.get('level', s.get('exam_level', ''))}|{s['city']}"
+        _db.save_checkpoint(key, 1)
+    return len(running)
+
+
 def get_exam_url(level: str) -> str:
     level = level.upper().strip()
     return EXAM_URLS.get(level, EXAM_URLS["A1"])

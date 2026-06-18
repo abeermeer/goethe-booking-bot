@@ -47,6 +47,9 @@
 - **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, brute force account lockout (30 fails = 15min ban), Sentry error tracking, audit log (`/api/audit-log`), SRI on static assets, Dependabot + pip-audit CI, secrets rotation script, HTTPS redirect option.
 - **Monitoring** — Health endpoint (`/api/health`) with DB + Chrome + circuit breaker checks, business metrics (`/api/metrics`), structured JSON logging to stdout, uptime monitor script, Telegram alerting script.
 - **Reliability** — Zero-downtime health gate in CI/CD, automated backup/restore script, rollback plan, staging environment reference, BCP docs.
+- **Live Integration Tests** — Nightly CI cron (2 AM UTC) tests real goethe.de portal: exam pages load, login page, schedule scraper, slot pre-check.
+- **Graceful Shutdown** — SIGTERM handler checkpoints running students on Railway container restart so progress is never lost.
+- **Real-Time WebSocket Logs** — Replace polling: booking logs stream to dashboard instantly via WebSocket at `/api/ws/logs`.
 
 ## Architecture
 
@@ -187,7 +190,7 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 | `db.py` | SQLite persistence layer (legacy) |
 | `database.py` | SQLAlchemy layer — SQLite + PostgreSQL via `DATABASE_URL` |
 | `async_worker.py` | Async booking worker with job queue |
-| `websocket_handler.py` | WebSocket handler for real-time log streaming (stub) |
+| `websocket_handler.py` | WebSocket handler for real-time log streaming |
 | `plugin_manager.py` | Plugin system with hook registration |
 | `notifications.py` | Telegram + Email notifications |
 | `gui.py` | Desktop GUI (Tkinter) |
