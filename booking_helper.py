@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
+from bs4 import BeautifulSoup
 from selenium import webdriver
 try:
     import undetected_chromedriver as uc
@@ -655,7 +656,7 @@ def check_slot_availability(student: Dict[str, str], logger: logging.Logger) -> 
     result = {"available": False, "slots_found": 0, "message": "", "details": []}
     driver = None
     try:
-        driver = create_driver(logger)
+        driver = create_driver(use_headless=True, logger=logger)
         exam_url = _build_exam_url(student)
         logger.info("Slot pre-check: loading %s", exam_url)
         driver.get(exam_url)
