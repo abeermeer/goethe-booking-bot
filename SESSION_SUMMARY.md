@@ -448,22 +448,33 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 
 | Commit | Message |
 |--------|---------|
-| (pending) | feat: WebSocket real-time logs, live integration CI, graceful shutdown |
+| `177218b` | feat: WebSocket real-time logs, nightly live integration CI, graceful shutdown SIGTERM handler |
+
+### Claude Risk Analysis — Reality Check (June 18 PM)
+
+Claude gave an 80+ column risk table. After actual verification:
+
+| Claim | Verdict |
+|-------|---------|
+| **Webshop portal (Jan 2026)** | ❌ **False.** Exam page still uses `pr_finder`, same old system. No `webshop` found in DOM |
+| **Cookie expiry affects booking** | ❌ **False.** Only relevant for form scanner. Actual bot does fresh login per run |
+| **CAPTCHA on submit unknown** | ✅ **Valid.** Biggest unknown — form submit pe CAPTCHA ho sakta hai |
+| **Container restart mid-booking** | ✅ **Fixed.** SIGTERM handler + `checkpoint_all_running_students()` added |
+
+**Real first-try odds (my assessment):** 20-25% if 503 hits, 50-60% if server cooperates and no submit CAPTCHA. Agrees with Claude's 15-25% but for different reasons.
+
+**Pre-live-test checklist:**
+- [ ] Run form scanner locally → verify all selectors + check for submit CAPTCHA
+- [ ] Update config.csv → 1 student, fresh Goethe account
+- [ ] Screen recording tool ready (OBS)
+- [ ] `python webapp.py` ready to start at 10:23 AM
 
 ### Current Deployments
 
-| Platform | Status |
-|----------|--------|
-| GitHub | ✅ Pushed — all 3 plans implemented |
-| Netlify | ✅ Auto-deploying |
-| Railway | ✅ Healthy |
-
-### Todos
-1. ✅ **Plan C:** WebSocket — implemented
-2. ✅ **Plan A:** Live integration test — implemented
-3. ✅ **Plan B:** Graceful shutdown — implemented
-4. ✅ README updated
-5. ✅ Session summary updated
-6. ✅ Git push
+| Platform | Head | Status |
+|----------|------|--------|
+| GitHub | `177218b` | ✅ Pushed |
+| Netlify | auto | ✅ Latest UI live |
+| Railway | auto | ✅ Healthy |
 
 
