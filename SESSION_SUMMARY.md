@@ -332,4 +332,13 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 |--------|---------|
 | `c30385b` | fix: accept / and - as DOB separator in config validation |
 
+### Form Scanner (Pre-flight Check)
+- **What it does:** `POST /api/form/scan` — logs into Goethe, navigates to booking form, scans all form fields (`input`/`select`/`textarea`), and compares them against `selector_fallbacks.py` known keys
+- **Why useful:** Never tested form fill on live page — this catches mismatched field names/IDs before the real booking attempt
+- **Returns:** list of all visible form fields with tag/type/name/id/placeholder/label, plus count of matched known selectors vs total
+
+| Commit | Message |
+|--------|---------|
+| `57f7d74` | feat: form scanner — pre-flight check of booking form fields |
+
 
