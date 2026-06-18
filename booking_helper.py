@@ -1007,11 +1007,15 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
         logger.info("Post-login URL: %s", current_url)
         if "login" in current_url or "cas/login" in current_url:
             error_el = driver.find_elements(By.CSS_SELECTOR, ".error, .alert, .message-error, .errortext")
-            if error_el:
-                _last_login_error = "Login error on page: " + error_el[0].text[:200]
-                logger.error(_last_login_error)
+            err_text = ""
+            for el in error_el:
+                if el.is_displayed():
+                    err_text = el.text.strip()
+                    break
+            if err_text:
+                _last_login_error = "Login error: " + err_text[:200]
             else:
-                _last_login_error = "Still on login page after submit — no error message shown"
+                _last_login_error = "Still on login page — no visible error. Page title: " + driver.title
             logger.warning(_last_login_error)
             return False
 
