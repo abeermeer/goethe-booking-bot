@@ -341,4 +341,51 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 |--------|---------|
 | `57f7d74` | feat: form scanner — pre-flight check of booking form fields |
 
+---
+
+## Session 20 — June 18, 2026 — Form Scanner & Pre-check UI + Login Fixes
+
+### Frontend — Added Buttons for Pre-flight Checks
+
+**Slot Pre-check** and **Form Scanner** buttons added to Configuration section in Settings. Also added Goethe email/password input fields so form scanner login works without CSV having password column.
+
+| Item | Description |
+|------|-------------|
+| Slot Pre-check | Opens exam page headless, scans HTML for "Book Now" buttons via BeautifulSoup. Returns per-student availability. Runs on Railway. |
+| Form Scanner | Logs into Goethe.de, navigates to booking form, scans all input/select/textarea fields, compares against `selector_fallbacks.py`. Takes ~30s. |
+
+### Fixes
+
+| Commit | Message |
+|--------|---------|
+| `8fdb27d` | add slot pre-check and form scanner buttons to dashboard |
+| `a460ed6` | fix: \`_build_exam_url\` renamed to \`get_exam_url\`, fix fallback for \`exam_level\` key |
+| `f78c90d` | fix: add Goethe password field for form scanner login |
+| `df4c1bc` | add email field for form scanner alongside password |
+| `21d3867` | capture detailed login error in form scanner response |
+| `e705e45` | fix: skip hidden error elements in login check |
+| `b910ab3` | fix: cookie consent dismissal, JS click fallback, page reload retry for Goethe login |
+
+### Slot Pre-check — Working ✅
+- Successfully opens exam pages headless (A1/A2/B1)
+- Returns "No bookable slots detected" (expected — slots release June 19)
+- Error fixed: `_build_exam_url` was renamed to `get_exam_url` but call sites not updated
+
+### Form Scanner Login — Blocked 🟡
+- **Problem:** Login stays on login page after submit — no visible error
+- **Attempted fixes:**
+  - Cookie consent dialog dismissal via JS
+  - JS click fallback for submit button (overlay interception)
+  - Page reload + retry loop (3 attempts)
+- **Suspected root cause:** reCAPTCHA on Goethe login page (`Hko_qNsui-Q`) or Usercentrics consent overlay blocks form submission in headless Chrome on Railway datacenter IP
+- **Deferred to June 19** — focus first on live booking test at 10:23 AM. Form scanner will be retried after.
+
+### Current Deployments
+
+| Platform | Status |
+|----------|--------|
+| GitHub | ✅ `b910ab3` pushed |
+| Netlify | ✅ Auto-deployed |
+| Railway | ✅ Healthy |
+
 
