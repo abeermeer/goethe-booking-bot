@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/tests-66%20passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/modules-23-orange" alt="Modules">
+  <img src="https://img.shields.io/badge/modules-25-orange" alt="Modules">
   <img src="https://img.shields.io/badge/gaps-0%20remaining-brightgreen" alt="Gaps">
 </p>
 
@@ -41,6 +41,8 @@
   - **Anti-Detection** — Human-like delays, mouse jitter, Cloudflare/503 detection, random user agents.
   - **Config Validation** — Auto-validates CSV on upload: checks required fields, email format, valid level (A1-C2), city, DOB, datetime format — reports all errors at once.
   - **Slot Pre-check** — `POST /api/slots/check` opens exam page and scans for "Book Now" buttons before starting the bot. Returns availability per student.
+  - **Form Scanner** — `POST /api/form/scan` logs into Goethe, navigates booking form, scans all form fields, compares against `selector_fallbacks.py`. Pre-flight check before actual booking.
+  - **Cookie-based Login** — Save Goethe login cookies from local machine via `scripts/save_cookies_simple.py`, reuse on Railway to bypass reCAPTCHA.
   - **Booking History** — `GET /api/history` + full-text search `GET /api/history/search?q=...` across queue history and logs.
 - **Security** — CSP/HSTS/XSS-Protection headers, CORS whitelist (restricted), server-side sessions with 24hr expiry + refresh token endpoint (`/api/refresh`), constant-time password compare, rate limiting (5/5min) with `Retry-After` headers, brute force account lockout (30 fails = 15min ban), Sentry error tracking, audit log (`/api/audit-log`), SRI on static assets, Dependabot + pip-audit CI, secrets rotation script, HTTPS redirect option.
 - **Monitoring** — Health endpoint (`/api/health`) with DB + Chrome + circuit breaker checks, business metrics (`/api/metrics`), structured JSON logging to stdout, uptime monitor script, Telegram alerting script.
@@ -199,6 +201,8 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 | `scripts/rotate_secrets.py` | Secret rotation utility |
 | `scripts/uptime_monitor.py` | Health check monitoring script |
 | `scripts/alert.py` | Telegram alerting utility |
+| `scripts/save_cookies_simple.py` | Save Goethe login cookies to Railway for form scanner |
+| `scripts/scan_form_local.py` | Run form scanner locally (bypass Railway reCAPTCHA) |
 | `tests/test_e2e.py` | E2E Playwright tests |
 | `tests/test_perf.py` | Performance benchmarks |
 | `tests/test_fuzz.py` | Fuzz testing |
@@ -307,5 +311,5 @@ Without Postgres, container restarts wipe your queue, logs, and student data.
 <p align="center">
   <sub>Built by <a href="https://github.com/abeermeer">Abeer Meer</a></sub><br>
   <sub>© 2026 Abeer Meer. Licensed under the <a href="LICENSE">MIT License</a>.</sub><br>
-  <sub>66+ tests · 22 modules · Swagger · Sentry · PWA · Alembic · PostgreSQL · Production-grade (10/10)</sub>
+  <sub>66+ tests · 25 modules · Swagger · Sentry · PWA · Alembic · PostgreSQL · Production-grade (10/10)</sub>
 </p>
