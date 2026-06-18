@@ -8,4 +8,4 @@ dockerfile_path = "Dockerfile"
 [deploy]
 restartPolicyType = "never"
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 600
