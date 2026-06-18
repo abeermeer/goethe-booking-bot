@@ -428,8 +428,16 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 
 | Platform | Status |
 |----------|--------|
-| GitHub | ✅ `67db713` pushed |
-| Netlify | ✅ Auto-deployed |
-| Railway | ✅ Healthy |
+| GitHub | ✅ `9bac2f8` pushed — README updated |
+| Netlify | ✅ Auto-deployed — latest UI live |
+| Railway | ✅ Running — Prague/Staging routes issue on local ISP, using `188.245.58.99:443` |
+
+### Todos Done ✅
+1. ✅ Session summary updated
+2. ✅ README updated (form scanner, cookie login, scripts table, 23→25 modules)
+3. ✅ GitHub pushed — `9bac2f8`
+4. ⏸️ Local folder — user will git pull later
+5. ✅ Netlify auto-deployed from GitHub
+6. ✅ Railway auto-deployed from GitHub
 
 
