@@ -380,14 +380,17 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 - **Suspected root cause:** reCAPTCHA on Goethe login page (`Hko_qNsui-Q`) or Usercentrics consent overlay blocks form submission in headless Chrome on Railway datacenter IP
 - **Deferred to June 19** — focus first on live booking test at 10:23 AM. Form scanner will be retried after.
 
-### Cookie-Based Form Scanner (Fix for reCAPTCHA)
+### Cookie-Based Form Scanner — FAILED ❌
 - **Problem:** Railway datacenter IP triggers Google reCAPTCHA v3 on Goethe login → form silently stays on login page
-- **Solution:** Save login cookies from local laptop (residential IP), reuse on Railway
-- **One-time local script:** `scripts/save_goethe_cookies.py` / `scripts/save_cookies_simple.py` — logs in visibly on laptop, extracts cookies, POSTs to `/api/goethe-cookies`
-- **Backend endpoint:** `POST /api/goethe-cookies` saves cookies in `bot_state` table via `db.set_state()`
-- **Modified `scan_booking_form()`:** Accepts `cookies` param — loads saved cookies first, skips login if valid
-- **Frontend:** "Cookies: ?" button in Settings → calls `GET /api/goethe-cookies` status. After save: shows "Cookies: ✅ 7"
-- **Result:** Form Scanner now works in one click from dashboard ✅
+- **Attempted fix:** Save login cookies from local laptop, reuse on Railway
+- **Result:** Cookies saved (7 cookies) but **HttpOnly** session cookies (TGC/CASTGC) can't be set via Selenium's `add_cookie()` — browser silently ignores them
+- **Form Scanner still shows:** "Still on login page — no visible error"
+- **Conclusion:** Need proxy or 2Captcha for Railway-based login
+
+### CRITICAL: Same issue WILL affect live booking bot
+- `run_student_flow()` also calls `login_to_goethe()` on Railway
+- If login fails for form scanner, it will also fail for actual booking
+- **Must fix before June 19 live test**
 
 ### MetaMask Error Fix
 - **Problem:** MetaMask browser extension injects itself → unhandled promise rejection → error overlay blocks entire page
@@ -415,6 +418,11 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 | `a9f7fc5` | feat: local form scanner script |
 | `5a5bd61` | feat: cookie-based form scanner |
 | `67db713` | fix: ignore MetaMask errors, add dismiss button |
+
+### Solution for live test: Run bot locally OR add proxy
+- **Option A: Run Flask API locally** — User starts the bot on their laptop (`python webapp.py`), dashboard connects to `localhost:5000`. No reCAPTCHA because residential IP.
+- **Option B: Add proxy field** — User provides a residential/mobile proxy URL in Settings, bot uses it via `--proxy-server=...`
+- **Option C: 2Captcha service** — Add reCAPTCHA solving (~$3/1000 solves), bot detects and solves reCAPTCHA on login page
 
 ### Current Deployments
 
