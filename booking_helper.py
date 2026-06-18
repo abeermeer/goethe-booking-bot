@@ -716,7 +716,7 @@ def scan_booking_form(student: Dict[str, str], logger: logging.Logger) -> Dict:
 
         ok = login_to_goethe(driver, student.get("email", ""), student.get("password", ""), logger)
         if not ok:
-            result["message"] = "Login failed"
+            result["message"] = "Login failed: " + get_last_login_error()
             return result
 
         exam_url = get_exam_url(student.get("level", student.get("exam_level", "A1")))
@@ -953,14 +953,21 @@ def login_to_goethe(driver: webdriver.Chrome, email: str, password: str, logger:
                 logger.error("Login failed after 3 attempts due to stale elements")
                 return False
 
+_last_login_error = ""
+
+def get_last_login_error() -> str:
+    return _last_login_error
+
 def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: logging.Logger) -> bool:
+    global _last_login_error
     try:
         wait_for_document_ready(driver, timeout=30)
         random_human_delay()
 
         email_input = find_element_fallback(driver, "login_email", timeout=15, logger=logger)
         if email_input is None:
-            logger.warning("Email field not found. Dumping page HTML for debugging.")
+            _last_login_error = "Email field not found on login page"
+            logger.warning(_last_login_error)
             logger.info("Page URL: %s", driver.current_url)
             logger.info("Page title: %s", driver.title)
             body = driver.find_element(By.TAG_NAME, "body").text[:500]
@@ -972,7 +979,8 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
 
         pwd_input = find_element_fallback(driver, "login_password", timeout=10, logger=logger)
         if pwd_input is None:
-            logger.warning("Password field not found")
+            _last_login_error = "Password field not found on login page"
+            logger.warning(_last_login_error)
             return False
         type_slowly(pwd_input, password)
         random_human_delay()
@@ -986,7 +994,8 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
 
         submit_btn = find_element_fallback(driver, "login_submit", timeout=10, logger=logger)
         if submit_btn is None:
-            logger.warning("Submit button not found")
+            _last_login_error = "Submit button not found on login page"
+            logger.warning(_last_login_error)
             return False
         logger.info("Clicking login submit button...")
         human_move_and_click(driver, submit_btn)
@@ -999,17 +1008,20 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
         if "login" in current_url or "cas/login" in current_url:
             error_el = driver.find_elements(By.CSS_SELECTOR, ".error, .alert, .message-error, .errortext")
             if error_el:
-                logger.error("Login error: %s", error_el[0].text)
-            logger.warning("Still on login page after submit — credentials may be wrong")
+                _last_login_error = "Login error on page: " + error_el[0].text[:200]
+                logger.error(_last_login_error)
+            else:
+                _last_login_error = "Still on login page after submit — no error message shown"
+            logger.warning(_last_login_error)
             return False
 
         logger.info("★ LOGIN SUCCESSFUL")
         return True
 
     except NoSuchElementException as exc:
-        logger.error("Login failed - element not found: %s", exc)
+        _last_login_error = f"Login failed - element not found: {exc}"
+        logger.error(_last_login_error)
         logger.info("Current URL: %s", driver.current_url)
-        logger.info("Dumping login page HTML to debug_login.html for inspection")
         try:
             page_html = driver.page_source
             with open("debug_login.html", "w", encoding="utf-8") as f:
@@ -1019,7 +1031,8 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
             pass
         return False
     except Exception as exc:
-        logger.exception("Login error: %s", exc)
+        _last_login_error = f"Login error: {exc}"
+        logger.exception(_last_login_error)
         return False
 
 
