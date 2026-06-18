@@ -944,24 +944,44 @@ def login_to_goethe(driver: webdriver.Chrome, email: str, password: str, logger:
     logger.info("══ STEP 4: Logging in to My Goethe.de ══")
     for attempt in range(1, 4):
         try:
-            return _login_attempt(driver, email, password, logger)
+            if _login_attempt(driver, email, password, logger):
+                return True
+            if attempt < 3:
+                logger.warning("Login attempt %d failed, reloading page and retrying...", attempt)
+                driver.get("https://login.goethe.de/cas/login")
+                wait_for_document_ready(driver, timeout=30)
+                time.sleep(2)
         except StaleElementReferenceException:
             if attempt < 3:
                 logger.warning("Stale element during login, retrying %d/3", attempt)
                 time.sleep(2)
+                driver.get("https://login.goethe.de/cas/login")
+                wait_for_document_ready(driver, timeout=30)
             else:
                 logger.error("Login failed after 3 attempts due to stale elements")
                 return False
+    return False
 
 _last_login_error = ""
 
 def get_last_login_error() -> str:
     return _last_login_error
 
+def _dismiss_cookie_consent(driver: webdriver.Chrome) -> None:
+    try:
+        for sel in ["#usercentrics-root", ".uc-banner", "[data-testid='uc-accept-all']", ".cookie-consent", "[aria-label*='cookie']"]:
+            els = driver.find_elements(By.CSS_SELECTOR, sel)
+            for el in els:
+                if el.is_displayed():
+                    driver.execute_script("arguments[0].style.display='none'", el)
+    except Exception:
+        pass
+
 def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: logging.Logger) -> bool:
     global _last_login_error
     try:
         wait_for_document_ready(driver, timeout=30)
+        _dismiss_cookie_consent(driver)
         random_human_delay()
 
         email_input = find_element_fallback(driver, "login_email", timeout=15, logger=logger)
@@ -998,7 +1018,10 @@ def _login_attempt(driver: webdriver.Chrome, email: str, password: str, logger: 
             logger.warning(_last_login_error)
             return False
         logger.info("Clicking login submit button...")
-        human_move_and_click(driver, submit_btn)
+        try:
+            human_move_and_click(driver, submit_btn)
+        except Exception:
+            driver.execute_script("arguments[0].click();", submit_btn)
 
         wait_for_document_ready(driver, timeout=30)
         random_human_delay()
