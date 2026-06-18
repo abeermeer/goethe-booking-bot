@@ -68,6 +68,7 @@
     --auth-bg: linear-gradient(135deg, #e8ecf4, #f0f2f8);
   }
   #errorBoundary { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; gap: 16px; padding: 24px; text-align: center; }
+  #errorBoundary .close-x { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--text2); font-size: 24px; cursor: pointer; padding: 4px 8px; line-height: 1; }
   #errorBoundary.visible { display: flex; }
   #errorBoundary h2 { font-size: 20px; color: var(--red); }
   #errorBoundary p { color: var(--text2); max-width: 480px; font-size: 13px; }
@@ -1892,12 +1893,18 @@ window.onerror = function(msg, url, line, col, err) {
   return true;
 };
 window.addEventListener("unhandledrejection", function(e) {
+  const msg = e.reason ? e.reason.message || String(e.reason) : "Unknown";
+  if (msg.includes("MetaMask") || msg.includes("ethereum") || msg.includes("EIP-1193")) return;
   const el = document.getElementById("errorBoundary");
   if (!el) return;
   const msgEl = document.getElementById("errorMsg");
-  if (msgEl) msgEl.textContent = "Unhandled Promise rejection: " + (e.reason ? e.reason.message || e.reason : "Unknown");
+  if (msgEl) msgEl.textContent = "Unhandled Promise rejection: " + msg;
   el.classList.add("visible");
 });
+
+function dismissError() {
+  document.getElementById("errorBoundary").classList.remove("visible");
+}
 
 // ── Theme toggle ──
 (function initTheme() {
@@ -1997,9 +2004,11 @@ function escHtml(s) {
 </div>
 <div class="toast-container" id="toastContainer"></div>
 <div id="errorBoundary" role="alertdialog" aria-labelledby="errorTitle">
+  <button class="close-x" onclick="dismissError()" aria-label="Close">&times;</button>
   <h2 id="errorTitle">Something went wrong</h2>
   <p id="errorMsg">An unexpected error occurred. The dashboard needs to reload.</p>
   <button onclick="location.reload()" aria-label="Reload dashboard">Reload Dashboard</button>
+  <button onclick="dismissError()" style="background:transparent;color:var(--text2);font-size:13px;" aria-label="Dismiss">Dismiss</button>
 </div>
 </body>
 </html>

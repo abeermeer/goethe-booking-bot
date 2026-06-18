@@ -1,7 +1,7 @@
 """Login to Goethe.de on your laptop, save cookies to Railway.
 Run ONCE, then Form Scanner works from dashboard in one click.
-Usage: python scripts/save_goethe_cookies.py"""
-import sys, os, time, json, logging
+Usage: python scripts/save_goethe_cookies.py [--email EMAIL] [--password PASSWORD] [--token AUTH_TOKEN]"""
+import sys, os, time, json, logging, argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -11,10 +11,17 @@ from selenium.webdriver.common.by import By
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("cookie_saver")
 
-EMAIL = input("Goethe email [abeermeer7979@gmail.com]: ").strip() or "abeermeer7979@gmail.com"
-PASSWORD = input("Goethe password: ").strip() or "hf?3Ru8UkhfKw*X"
-RAILWAY_URL = input("Railway URL [https://goethe-booking-bot-production-092f.up.railway.app]: ").strip() or "https://goethe-booking-bot-production-092f.up.railway.app"
-AUTH_TOKEN = input("Dashboard auth token (from login): ").strip()
+parser = argparse.ArgumentParser()
+parser.add_argument("--email", default="")
+parser.add_argument("--password", default="")
+parser.add_argument("--token", default="")
+parser.add_argument("--railway", default="https://goethe-booking-bot-production-092f.up.railway.app")
+args = parser.parse_args()
+
+EMAIL = args.email or input("Goethe email [abeermeer7979@gmail.com]: ").strip() or "abeermeer7979@gmail.com"
+PASSWORD = args.password or input("Goethe password: ").strip() or "hf?3Ru8UkhfKw*X"
+RAILWAY_URL = args.railway or input("Railway URL [https://goethe-booking-bot-production-092f.up.railway.app]: ").strip() or "https://goethe-booking-bot-production-092f.up.railway.app"
+AUTH_TOKEN = args.token or input("Dashboard auth token (from login): ").strip()
 
 print("\nOpening browser...")
 driver = create_driver(use_headless=False, logger=logger)
