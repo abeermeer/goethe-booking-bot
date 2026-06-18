@@ -106,6 +106,7 @@ import alexa
 import goethe_scraper
 import student_queue as sqmod
 from deadman import DeadManSwitch
+from telegram_commander import TelegramCommander
 import signal
 
 # WebSocket broadcaster (stub-safe — no-op if flask-sock missing)
@@ -231,6 +232,7 @@ student_results: List[Dict] = []
 config_path: str = ""
 telegram_token: str = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 telegram_chat_id: str = os.environ.get("TELEGRAM_CHAT_ID", "")
+telegram_commander: Optional[TelegramCommander] = None
 
 # ── Scheduled mode ──
 scheduled_start: Optional[str] = None  # ISO datetime string
@@ -383,6 +385,11 @@ def run_students_web(students: List[Dict], headless: bool, immediate: bool = Fal
     bot_running = False
     deadman.stop_monitor()
     master_logger.info("All students finished")
+    if telegram_commander:
+        summary_lines = ["Bot finished. Results:"]
+        for r in student_results[-10:]:
+            summary_lines.append(f"  {r.get('name')}: {r.get('status')} ref={r.get('reference', 'N/A')}")
+        telegram_commander.send("\n".join(summary_lines))
     log_queue.put(None)  # Signal SSE stream to end
 
 
@@ -1178,11 +1185,74 @@ app.register_blueprint(bp, url_prefix="/api", name="api")
 app.register_blueprint(bp, url_prefix="/api/v1", name="api_v1")
 
 
+# ── Telegram commander bridge functions ──
+
+def start_bot_from_telegram():
+    global bot_thread, bot_running, student_status, student_results
+    if bot_running:
+        if telegram_commander:
+            telegram_commander.send("Bot is already running")
+        return
+    students = _get_loaded_students()
+    if not students:
+        if telegram_commander:
+            telegram_commander.send("No students loaded. Upload a CSV config first.")
+        return
+    student_status.clear()
+    student_results.clear()
+    while not log_queue.empty():
+        try:
+            log_queue.get_nowait()
+        except queue.Empty:
+            break
+    bot_thread = threading.Thread(target=run_students_web, args=(students, True), daemon=True)
+    bot_thread.start()
+    if telegram_commander:
+        telegram_commander.send(f"Bot started for {len(students)} student(s) (headless)")
+
+def stop_all():
+    global bot_stop_event
+    bot_stop_event.set()
+
+
+def check_slot(level: str, city: str) -> bool:
+    try:
+        sched = bot.get_schedule()
+        for entry in sched:
+            if isinstance(entry, dict):
+                if entry.get("level", "").upper() == level.upper() and entry.get("city", "").lower() == city.lower():
+                    return True
+            else:
+                if getattr(entry, "level", "").upper() == level.upper() and getattr(entry, "city", "").lower() == city.lower():
+                    return True
+        return False
+    except Exception:
+        return False
+
+
+def restart_bot():
+    global bot_running, bot_thread
+    if bot_running:
+        stop_all()
+        wait_start = time.time()
+        while bot_running and time.time() - wait_start < 30:
+            time.sleep(1)
+    start_bot_from_telegram()
+
+
 def main():
     global config_path
     default_cfg = PROJECT_DIR / "config.csv"
     if default_cfg.exists():
         config_path = str(default_cfg)
+
+    global telegram_commander
+    if telegram_token and telegram_chat_id:
+        telegram_commander = TelegramCommander(telegram_token, telegram_chat_id, sys.modules[__name__])
+        telegram_commander.start()
+        print("  Telegram Commander: ACTIVE")
+    else:
+        print("  Telegram Commander: DISABLED (set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)")
 
     port = int(os.environ.get("PORT", 5000))
     host = os.environ.get("HOST", "0.0.0.0")
