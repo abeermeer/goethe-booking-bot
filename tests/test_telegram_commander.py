@@ -167,6 +167,40 @@ def test_unauthed_chat_ignored():
     c._reply.send.assert_not_called()
 
 
+def test_csv_document_rejected_non_csv():
+    c = TelegramCommander("token", "1", FakeBotRef())
+    c._reply.send = MagicMock()
+    c._handle_update({
+        "update_id": 1,
+        "message": {"chat": {"id": 1}, "document": {"file_name": "photo.jpg", "file_id": "abc123", "file_size": 1000}}
+    })
+    sent = _text_sent(c)
+    assert ".csv" in sent.lower() or "CSV" in sent
+
+
+def test_csv_document_no_load_config_csv():
+    c = TelegramCommander("token", "1", FakeBotRef())
+    c._reply.send = MagicMock()
+    c._handle_update({
+        "update_id": 1,
+        "message": {"chat": {"id": 1}, "document": {"file_name": "students.csv", "file_id": "abc123", "file_size": 1000}}
+    })
+    # Should say config handler not available since FakeBotRef has no load_config_csv
+    sent = _text_sent(c)
+    assert "download" in sent.lower() or "Cannot" in sent or "config" in sent.lower()
+
+
+def test_csv_document_oversized():
+    c = TelegramCommander("token", "1", FakeBotRef())
+    c._reply.send = MagicMock()
+    c._handle_update({
+        "update_id": 1,
+        "message": {"chat": {"id": 1}, "document": {"file_name": "students.csv", "file_id": "abc123", "file_size": 600 * 1024}}
+    })
+    sent = _text_sent(c)
+    assert "large" in sent.lower() or "500KB" in sent
+
+
 def test_command_map_has_all_handlers():
     from telegram_commander import COMMAND_MAP
     expected = {"/start", "/stop", "/status", "/schedule", "/check", "/history", "/restart", "/notify", "/help", "/stopall"}

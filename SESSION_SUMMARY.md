@@ -491,6 +491,38 @@ Multi-agent research on **Pakistan vs India booking systems**:
 
 **Decision:** First complete Pakistan live test (June 19), then build India Webshop engine.
 
+### Session 24 — June 19 — Telegram Commander
+
+**Problem:** Bot could only send outgoing Telegram notifications. No way to control or check status remotely via Telegram.
+
+**Solution:** New `telegram_commander.py` module with long-polling `getUpdates` loop (no new deps — uses `urllib.request` like existing notifications). Runs as a daemon thread inside the Flask process.
+
+**Commands implemented:**
+
+| Command | Action |
+|---|---|
+| `/start` | Start booking for all loaded students |
+| `/stop` / `/stopall` | Stop all students |
+| `/status` | Bot running state + per-student status |
+| `/schedule` | Upcoming 10 exams |
+| `/check A1 Karachi` | Slot availability check |
+| `/history [query]` | Recent bookings/logs |
+| `/restart` | Stop then restart |
+| `/notify on/off` | Toggle Telegram notifications |
+| `/help` | All commands |
+
+**Integration:**
+- Bridge functions in `webapp.py`: `start_bot_from_telegram()`, `stop_all()`, `check_slot()`, `restart_bot()`
+- Auto-starts on boot if `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env vars are set
+- Chat ID filter — ignores unauthorized senders
+- End-of-run summary sent via commander (shows results for each student)
+- 17 unit tests in `tests/test_telegram_commander.py` (all passing)
+
+**Files:**
+- `telegram_commander.py` — new (269 lines)
+- `tests/test_telegram_commander.py` — new (169 lines)
+- `webapp.py` — modified (import, global, bridge functions, startup, EOR notification)
+
 ### Session 23 — June 18 PM — Client Clarification + Handoff File
 
 **Client clarification:** Bot only needs to reach **card payment page** — user fills card manually. No payment automation needed.
@@ -518,6 +550,7 @@ Multi-agent research on **Pakistan vs India booking systems**:
 
 | Commit | Message |
 |--------|---------|
+| `fae1ced` | feat: Telegram Commander with /start /stop /status /check /schedule /history /restart /notify /help |
 | `d7fb61d` | docs: session summary — Session 23, client clarification, handoff file created |
 | `b8ffdf4` | docs: session summary — India RND complete (Webshop vs pr_finder, PTN vs PSID) |
 | `559e958` | docs: session summary + README updated |

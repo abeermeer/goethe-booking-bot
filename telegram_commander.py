@@ -53,6 +53,11 @@ class TelegramCommander:
         chat_id = msg.get("chat", {}).get("id")
         if self.allowed_chat_id is None or chat_id != self.allowed_chat_id:
             return
+
+        if msg.get("document"):
+            self._handle_document(msg, chat_id)
+            return
+
         text = (msg.get("text") or "").strip()
         if not text.startswith("/"):
             return
@@ -71,6 +76,81 @@ class TelegramCommander:
                     self._reply.send(chat_id, f"Error: {exc}")
         else:
             self._reply.send(chat_id, f"Unknown command: {cmd}\n/help for available commands")
+
+    def _handle_document(self, msg: Dict, chat_id: int):
+        doc = msg["document"]
+        file_name = (doc.get("file_name") or "").lower()
+        if not file_name.endswith(".csv"):
+            self._reply.send(chat_id, "Please send a <b>.csv</b> file")
+            return
+        file_id = doc["file_id"]
+        file_size = doc.get("file_size", 0)
+        if file_size > 500 * 1024:
+            self._reply.send(chat_id, "File too large (max 500KB)")
+            return
+
+        self._reply.send(chat_id, "Downloading CSV...")
+        try:
+            file_path = self._download_file(file_id)
+            if not file_path:
+                self._reply.send(chat_id, "Failed to download file from Telegram")
+                return
+            ref = self.bot_ref
+            if hasattr(ref, "load_config_csv"):
+                ok = ref.load_config_csv(file_path)
+                if not ok:
+                    self._reply.send(chat_id, "Failed to parse CSV — check the format")
+                    return
+            else:
+                self._reply.send(chat_id, "Cannot save CSV — no config handler available")
+                return
+
+            load_fn = getattr(ref.bot, "load_all_students", None) if hasattr(ref, "bot") else None
+            if load_fn:
+                students = load_fn(file_path)
+                count = len(students)
+                if count > 15:
+                    lines = [f"Loaded {count} students from CSV."]
+                    for s in students[:15]:
+                        level = s.get("level", s.get("exam_level", "?"))
+                        city = s.get("city", "?")
+                        name = s.get("name", "?")
+                        lines.append(f"  {name} | {level} | {city}")
+                    lines.append(f"  ... and {count - 15} more")
+                else:
+                    lines = [f"Loaded {count} students:"]
+                    for s in students:
+                        level = s.get("level", s.get("exam_level", "?"))
+                        city = s.get("city", "?")
+                        name = s.get("name", "?")
+                        lines.append(f"  {name} | {level} | {city}")
+                self._reply.send(chat_id, "\n".join(lines))
+            else:
+                self._reply.send(chat_id, "CSV saved. Use /start to begin.")
+        except Exception as exc:
+            self.logger.exception("CSV upload failed: %s", exc)
+            self._reply.send(chat_id, f"CSV upload error: {exc}")
+
+    def _download_file(self, file_id: str) -> Optional[str]:
+        import tempfile
+        url = f"https://api.telegram.org/bot{self.token}/getFile?file_id={file_id}"
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+            file_path = data.get("result", {}).get("file_path")
+            if not file_path:
+                return None
+            dl_url = f"https://api.telegram.org/file/bot{self.token}/{file_path}"
+            with urllib.request.urlopen(dl_url, timeout=30) as resp:
+                content = resp.read()
+            tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="wb")
+            tmp.write(content)
+            tmp.close()
+            return tmp.name
+        except Exception as exc:
+            self.logger.error("Download file error: %s", exc)
+            return None
 
     def _run(self):
         self.logger.info("Telegram commander polling started")

@@ -1210,6 +1210,24 @@ def start_bot_from_telegram():
     if telegram_commander:
         telegram_commander.send(f"Bot started for {len(students)} student(s) (headless)")
 
+
+def load_config_csv(csv_path: str) -> bool:
+    global config_path
+    if not Path(csv_path).exists():
+        return False
+    try:
+        students = bot.load_all_students(csv_path)
+        if not students:
+            return False
+        project_dst = str(PROJECT_DIR / "config.csv")
+        import shutil
+        shutil.copy2(csv_path, project_dst)
+        config_path = project_dst
+        return True
+    except Exception:
+        return False
+
+
 def stop_all():
     global bot_stop_event
     bot_stop_event.set()
