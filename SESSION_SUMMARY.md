@@ -491,17 +491,42 @@ Multi-agent research on **Pakistan vs India booking systems**:
 
 **Decision:** First complete Pakistan live test (June 19), then build India Webshop engine.
 
-### Pushed to GitHub (Session 22)
-- `559e958` — docs: session summary + README updated
-- `4fc3615` — docs: Claude risk reality check, pre-live-test checklist
-- Visibility toggled: **public → private**
-- Repo confirmed under `abeermeer` org, used `GH_TOKEN` from Windows Credential Manager
+### Session 23 — June 18 PM — Client Clarification + Handoff File
+
+**Client clarification:** Bot only needs to reach **card payment page** — user fills card manually. No payment automation needed.
+
+**Revised impact:**
+- Removes ~370 LOC of fragile payment/3D Secure/OTP handling
+- Dev time drops from 5-8 days to **3-5 days**
+- Difficulty drops from **Hard → Medium**
+- Core challenge remains: high-traffic competition (same as Pakistan)
+
+**Handoff file created:** `C:\Users\brosp\Downloads\goethe-bot-india\PROJECT_CONTEXT.md`
+- 250+ line comprehensive document
+- Full project history, technical analysis, implementation plan
+- File-by-file breakdown with code patterns
+- Setup instructions for new repo/deploy
+- New session opens new folder, reads this file, starts building without asking user anything
+
+**Decision:** User chose separate repo approach. Pakistan bot stays untouched. India gets:
+- New folder: `C:\Users\brosp\Downloads\goethe-bot-india\`
+- New GitHub: `goethe-booking-bot-india` (private)
+- New Netlify + Railway
+- New opencode session with PROJECT_CONTEXT.md as handoff
+
+### Pushed to GitHub
+
+| Commit | Message |
+|--------|---------|
+| `b8ffdf4` | docs: session summary — India RND complete (Webshop vs pr_finder, PTN vs PSID, payment differences) |
+| `559e958` | docs: session summary + README updated |
+| `4fc3615` | docs: Claude risk reality check, pre-live-test checklist |
 
 ### Current Deployments
 
 | Platform | Head | Status |
 |----------|------|--------|
-| GitHub | `559e958` | ✅ Private |
+| GitHub | `b8ffdf4` | ✅ Private |
 | Netlify | auto | ✅ Latest UI live |
 | Railway | auto | ✅ Healthy |
 
