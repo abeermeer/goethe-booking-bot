@@ -324,4 +324,12 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 | Smoke (push/PR) | ✅ Passing |
 | Deploy (push to main) | ✅ Tokens updated — will pass on next push |
 
+### DOB Validation Fix
+- **Problem:** Config validation rejected `19/03/2000` (DD/MM/YYYY with slashes), only accepted dots
+- **Fix:** `_validate_students()` now accepts `.`, `/`, and `-` as DOB separators: `DD.MM.YYYY`, `DD/MM/YYYY`, `DD-MM-YYYY`
+
+| Commit | Message |
+|--------|---------|
+| `c30385b` | fix: accept / and - as DOB separator in config validation |
+
 
