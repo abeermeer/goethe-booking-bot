@@ -380,11 +380,47 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 - **Suspected root cause:** reCAPTCHA on Goethe login page (`Hko_qNsui-Q`) or Usercentrics consent overlay blocks form submission in headless Chrome on Railway datacenter IP
 - **Deferred to June 19** — focus first on live booking test at 10:23 AM. Form scanner will be retried after.
 
+### Cookie-Based Form Scanner (Fix for reCAPTCHA)
+- **Problem:** Railway datacenter IP triggers Google reCAPTCHA v3 on Goethe login → form silently stays on login page
+- **Solution:** Save login cookies from local laptop (residential IP), reuse on Railway
+- **One-time local script:** `scripts/save_goethe_cookies.py` / `scripts/save_cookies_simple.py` — logs in visibly on laptop, extracts cookies, POSTs to `/api/goethe-cookies`
+- **Backend endpoint:** `POST /api/goethe-cookies` saves cookies in `bot_state` table via `db.set_state()`
+- **Modified `scan_booking_form()`:** Accepts `cookies` param — loads saved cookies first, skips login if valid
+- **Frontend:** "Cookies: ?" button in Settings → calls `GET /api/goethe-cookies` status. After save: shows "Cookies: ✅ 7"
+- **Result:** Form Scanner now works in one click from dashboard ✅
+
+### MetaMask Error Fix
+- **Problem:** MetaMask browser extension injects itself → unhandled promise rejection → error overlay blocks entire page
+- **Fix:** Ignore errors containing "MetaMask"/"ethereum"/"EIP-1193" in `unhandledrejection` handler
+- Also added **X button** + **Dismiss** button to error overlay
+
+### WireGuard Noise
+- **Carrier:** PTCL (Pakistan)
+- **WireGuard `Endpoint`:** `154.80.188.66:51820` (IP matches `gov.pk` / SNGPL/HEC range)
+- **`PersistentKeepalive`:** `= 25` (recommended: 25-30 for CGNAT/DS-Lite)
+- **Routing:** `AllowedIPs = 0.0.0.0/0` — full tunnel already active
+- **Issue:** Noise ≈ 1-5 Mbps at all hours — carrier/ISP shaping, not fixable client-side
+
+### Commit Log (this session)
+
+| Commit | Message |
+|--------|---------|
+| `8fdb27d` | add slot pre-check and form scanner buttons to dashboard |
+| `a460ed6` | fix: `_build_exam_url` renamed to `get_exam_url` |
+| `f78c90d` | fix: add Goethe password field for form scanner login |
+| `df4c1bc` | add email field for form scanner alongside password |
+| `21d3867` | capture detailed login error in form scanner response |
+| `e705e45` | fix: skip hidden error elements in login check |
+| `b910ab3` | fix: cookie consent dismissal, JS click fallback, page reload retry |
+| `a9f7fc5` | feat: local form scanner script |
+| `5a5bd61` | feat: cookie-based form scanner |
+| `67db713` | fix: ignore MetaMask errors, add dismiss button |
+
 ### Current Deployments
 
 | Platform | Status |
 |----------|--------|
-| GitHub | ✅ `b910ab3` pushed |
+| GitHub | ✅ `67db713` pushed |
 | Netlify | ✅ Auto-deployed |
 | Railway | ✅ Healthy |
 
