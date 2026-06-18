@@ -857,9 +857,12 @@
           <input type="file" id="csvFile" accept=".csv" onchange="uploadConfig(event)">
           <button class="btn btn-outline btn-sm" onclick="loadConfigFromBackend()">From Server</button>
           <button class="btn btn-outline btn-sm" onclick="toggleConfigPreview()">Preview</button>
+          <button class="btn btn-outline btn-sm" onclick="slotPreCheck()">Slot Pre-check</button>
+          <button class="btn btn-outline btn-sm" onclick="formScan()">Form Scanner</button>
         </div>
         <div id="configInfo" style="font-size:13px;color:var(--text2);"></div>
         <div id="configPreview" class="cfg-preview"></div>
+        <div id="preflightResult" style="font-size:13px;color:var(--text2);margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px;display:none;white-space:pre-wrap;font-family:monospace;"></div>
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;">
           <span style="font-size:13px;color:var(--text2);">Theme</span>
           <label class="toggle"><input type="checkbox" id="themeToggle" onchange="toggleTheme(event.target.checked)"><span class="slider"></span></label>
@@ -1234,6 +1237,62 @@ async function uploadConfig(event) {
 function toggleConfigPreview() {
   const el = document.getElementById("configPreview");
   el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+// ── Slot Pre-check ──
+async function slotPreCheck() {
+  if (!connected) return showToast("Connect to backend first", "error");
+  const el = document.getElementById("preflightResult");
+  el.style.display = "block";
+  el.textContent = "Checking slots...";
+  try {
+    const resp = await apiFetch(`${BASE}/api/slots/check`, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: "{}", signal: AbortSignal.timeout(60000), _loading: "Checking slot availability..."
+    });
+    const data = await resp.json();
+    if (!data.ok) { el.textContent = "Error: " + (data.error || "Unknown"); return; }
+    let txt = "Any available: " + (data.any_available ? "YES" : "NO") + "\n";
+    for (const r of data.results) {
+      txt += `\n${r.name}: ${r.available ? "Available" : "Unavailable"} (${r.slots_found || 0} slots)\n`;
+      if (r.details && r.details.length) txt += "  " + r.details.map(d => d.text).join(", ") + "\n";
+      txt += "  " + r.message + "\n";
+    }
+    el.textContent = txt;
+  } catch (e) {
+    el.textContent = "Request failed: " + e.message;
+    showToast("Slot pre-check failed", "error");
+  }
+}
+
+// ── Form Scanner ──
+async function formScan() {
+  if (!connected) return showToast("Connect to backend first", "error");
+  const el = document.getElementById("preflightResult");
+  el.style.display = "block";
+  el.textContent = "Scanning booking form (takes ~30s)...";
+  try {
+    const resp = await apiFetch(`${BASE}/api/form/scan`, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: "{}", signal: AbortSignal.timeout(120000), _loading: "Scanning booking form..."
+    });
+    const data = await resp.json();
+    if (!data.ok) { el.textContent = "Error: " + (data.error || "Unknown"); return; }
+    const r = data.result;
+    let txt = r.message + "\n";
+    txt += `Selector match: ${r.known_keys_found}/${r.known_keys_total}\n`;
+    if (r.missing_keys && r.missing_keys.length) txt += `Missing: ${r.missing_keys.join(", ")}\n`;
+    txt += "\nForm fields found:\n";
+    for (const f of r.fields) {
+      txt += `  <${f.tag}${f.type ? ' type="'+f.type+'"' : ''} name="${f.name}" id="${f.id}" placeholder="${f.placeholder}"`;
+      if (f.label) txt += ` label="${f.label}"`;
+      txt += `>\n`;
+    }
+    el.textContent = txt;
+  } catch (e) {
+    el.textContent = "Scan failed: " + e.message;
+    showToast("Form scan failed", "error");
+  }
 }
 
 // ── Start / Stop ──
