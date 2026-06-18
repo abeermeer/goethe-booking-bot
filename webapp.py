@@ -754,8 +754,6 @@ def api_health():
         "circuit_breaker": {
             "state": cb.state,
             "consecutive_failures": cb.consecutive_failures,
-            "threshold": cb.threshold,
-            "cooldown_seconds": cb.cooldown,
         },
     })
 
