@@ -657,7 +657,7 @@ def check_slot_availability(student: Dict[str, str], logger: logging.Logger) -> 
     try:
         from bs4 import BeautifulSoup
         driver = create_driver(use_headless=True, logger=logger)
-        exam_url = _build_exam_url(student)
+        exam_url = get_exam_url(student.get("level", student.get("exam_level", "A1")))
         logger.info("Slot pre-check: loading %s", exam_url)
         driver.get(exam_url)
         wait_for_document_ready(driver)
@@ -719,7 +719,7 @@ def scan_booking_form(student: Dict[str, str], logger: logging.Logger) -> Dict:
             result["message"] = "Login failed"
             return result
 
-        exam_url = _build_exam_url(student)
+        exam_url = get_exam_url(student.get("level", student.get("exam_level", "A1")))
         logger.info("Form scanner: navigating to %s", exam_url)
         driver.get(exam_url)
         wait_for_document_ready(driver)
