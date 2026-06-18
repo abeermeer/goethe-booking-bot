@@ -227,9 +227,9 @@ def _validate_students(students: List[Dict]) -> None:
         if city and city not in VALID_CITIES:
             errors.append(f"Row {idx}: invalid city '{city}' (valid: Karachi, Lahore, Islamabad)")
         if dob:
-            parts = dob.replace("-", ".").split(".")
+            parts = dob.replace("-", ".").replace("/", ".").split(".")
             if len(parts) != 3 or not all(p.isdigit() for p in parts):
-                errors.append(f"Row {idx}: invalid DOB format '{dob}' (use DD.MM.YYYY)")
+                errors.append(f"Row {idx}: invalid DOB format '{dob}' (use DD.MM.YYYY or DD/MM/YYYY)")
         if bdt:
             try:
                 dt.datetime.fromisoformat(bdt)
