@@ -518,7 +518,8 @@ Multi-agent research on **Pakistan vs India booking systems**:
 
 | Commit | Message |
 |--------|---------|
-| `b8ffdf4` | docs: session summary — India RND complete (Webshop vs pr_finder, PTN vs PSID, payment differences) |
+| `d7fb61d` | docs: session summary — Session 23, client clarification, handoff file created |
+| `b8ffdf4` | docs: session summary — India RND complete (Webshop vs pr_finder, PTN vs PSID) |
 | `559e958` | docs: session summary + README updated |
 | `4fc3615` | docs: Claude risk reality check, pre-live-test checklist |
 
@@ -526,7 +527,7 @@ Multi-agent research on **Pakistan vs India booking systems**:
 
 | Platform | Head | Status |
 |----------|------|--------|
-| GitHub | `b8ffdf4` | ✅ Private |
+| GitHub | `d7fb61d` | ✅ Private |
 | Netlify | auto | ✅ Latest UI live |
 | Railway | auto | ✅ Healthy |
 
