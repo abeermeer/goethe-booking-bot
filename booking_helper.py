@@ -697,6 +697,136 @@ def check_slot_availability(student: Dict[str, str], logger: logging.Logger) -> 
     return result
 
 
+# ── Form scanner (pre-flight check) ──
+
+def scan_booking_form(student: Dict[str, str], logger: logging.Logger) -> Dict:
+    """Login to Goethe, open the booking form, and scan all form fields.
+    Compares found fields against selector_fallbacks known keys.
+    Returns {ok: bool, fields: List[Dict], known_keys_found: int, known_keys_total: int, message: str}."""
+    result = {"ok": False, "fields": [], "known_keys_found": 0, "known_keys_total": 0, "message": ""}
+    driver = None
+    try:
+        from selector_fallbacks import ELEMENT_SELECTORS
+        driver = create_driver(use_headless=True, logger=logger)
+        driver.get("https://login.goethe.de/cas/login")
+        wait_for_document_ready(driver)
+        from selenium.webdriver.common.by import By
+        from selenium.common.exceptions import NoSuchElementException
+        time.sleep(2)
+
+        ok = login_to_goethe(driver, student.get("email", ""), student.get("password", ""), logger)
+        if not ok:
+            result["message"] = "Login failed"
+            return result
+
+        exam_url = _build_exam_url(student)
+        logger.info("Form scanner: navigating to %s", exam_url)
+        driver.get(exam_url)
+        wait_for_document_ready(driver)
+        time.sleep(5)
+
+        try:
+            close_btn = driver.find_element(By.CSS_SELECTOR, "button.close, .modal-close, [data-dismiss='modal']")
+            close_btn.click()
+            time.sleep(1)
+        except NoSuchElementException:
+            pass
+
+        try:
+            finder_container = driver.find_element(By.CSS_SELECTOR, "#pr_finder_9523459, .pr-finder, [class*='finder']")
+            finder_container.click()
+            time.sleep(3)
+        except NoSuchElementException:
+            pass
+
+        try:
+            book_btn = driver.find_element(By.XPATH, "//a[contains(text(),'Book') or contains(text(),'book')]")
+            book_btn.click()
+            time.sleep(3)
+        except NoSuchElementException:
+            pass
+
+        continue_btn = None
+        for sel in ["a.standard", "button.standard", ".btn-primary", "[class*='continue']"]:
+            try:
+                els = driver.find_elements(By.CSS_SELECTOR, sel)
+                for el in els:
+                    txt = el.text.strip().lower()
+                    if txt in ("continue", "weiter"):
+                        continue_btn = el
+                        break
+            except NoSuchElementException:
+                pass
+        if continue_btn:
+            continue_btn.click()
+            time.sleep(3)
+
+        book_for_self = None
+        for sel in ["a.standard", "button.standard", ".btn-primary", "[class*='book']"]:
+            try:
+                els = driver.find_elements(By.CSS_SELECTOR, sel)
+                for el in els:
+                    txt = el.text.strip().lower()
+                    if "myself" in txt or "selbst" in txt or "buchen" in txt:
+                        book_for_self = el
+                        break
+            except NoSuchElementException:
+                pass
+        if book_for_self:
+            book_for_self.click()
+            time.sleep(3)
+
+        script = """
+            var fields = [];
+            var els = document.querySelectorAll('input:not([type=hidden]):not([type=submit]), select, textarea');
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                var rect = el.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    fields.push({
+                        tag: el.tagName.toLowerCase(),
+                        type: el.type || '',
+                        name: el.name || '',
+                        id: el.id || '',
+                        placeholder: el.placeholder || '',
+                        class: el.className || '',
+                        label: (function(){var l;try{l=document.querySelector('label[for=\\\"'+el.id+'\\\"]')}catch(e){}return l?l.innerText.trim():''})(),
+                        visible: rect.top > -100 && rect.top < window.innerHeight,
+                        value: el.value || ''
+                    });
+                }
+            }
+            return fields;
+        """
+        fields = driver.execute_script(script)
+
+        known_keys = ELEMENT_SELECTORS.keys()
+        found_keys = set()
+        for f in fields:
+            for key in known_keys:
+                if any(f.get("name") in sel[1] or f.get("id") in sel[1] for sel in ELEMENT_SELECTORS[key]):
+                    found_keys.add(key)
+
+        result["fields"] = fields
+        result["known_keys_found"] = len(found_keys)
+        result["known_keys_total"] = len(known_keys)
+        missing = set(known_keys) - found_keys
+        result["missing_keys"] = sorted(missing)
+        result["ok"] = True
+        result["message"] = f"Scanned {len(fields)} form fields, {len(found_keys)}/{len(known_keys)} known selectors matched"
+        logger.info("Form scan complete: %s", result["message"])
+    except Exception as exc:
+        logger.warning("Form scan failed: %s", exc)
+        result["message"] = f"Scan error: {exc}"
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+    return result
+
+
 # ── Scheduled mode ──
 
 SCHEDULED_CHECK_INTERVAL = 30  # seconds

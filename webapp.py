@@ -972,6 +972,29 @@ def api_slots_check():
     return jsonify({"ok": True, "results": results, "any_available": any_available})
 
 
+# ── Form scanner (pre-flight) ──
+
+@bp.route("/form/scan", methods=["POST"])
+@require_auth
+def api_form_scan():
+    data = request.get_json(silent=True) or {}
+    students = data.get("students", [])
+    if not students:
+        students = _get_loaded_students()
+    if not students:
+        return jsonify({"ok": False, "error": "No students provided or loaded"}), 400
+
+    student = students[0]
+    name = student.get("name", "?")
+
+    try:
+        r = bot.scan_booking_form(student, logging.getLogger("form_scan"))
+        r["name"] = name
+        return jsonify({"ok": True, "result": r})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 # ── Booking history ──
 
 @bp.route("/history")
