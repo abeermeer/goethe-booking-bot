@@ -859,6 +859,7 @@
           <button class="btn btn-outline btn-sm" onclick="toggleConfigPreview()">Preview</button>
           <button class="btn btn-outline btn-sm" onclick="slotPreCheck()">Slot Pre-check</button>
           <button class="btn btn-outline btn-sm" onclick="formScan()">Form Scanner</button>
+          <input type="email" id="goetheEmail" placeholder="Goethe email" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface1);color:var(--text1);font-size:12px;width:160px;">
           <input type="password" id="goethePassword" placeholder="Goethe password" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface1);color:var(--text1);font-size:12px;width:140px;">
         </div>
         <div id="configInfo" style="font-size:13px;color:var(--text2);"></div>
@@ -1273,10 +1274,14 @@ async function formScan() {
   el.style.display = "block";
   el.textContent = "Scanning booking form (takes ~30s)...";
   try {
+    const em = document.getElementById("goetheEmail").value.trim();
     const pw = document.getElementById("goethePassword").value.trim();
+    const body = {};
+    if (em) body.email = em;
+    if (pw) body.password = pw;
     const resp = await apiFetch(`${BASE}/api/form/scan`, {
       method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({password: pw || undefined}), signal: AbortSignal.timeout(120000), _loading: "Scanning booking form..."
+      body: JSON.stringify(body), signal: AbortSignal.timeout(120000), _loading: "Scanning booking form..."
     });
     const data = await resp.json();
     if (!data.ok) { el.textContent = "Error: " + (data.error || "Unknown"); return; }

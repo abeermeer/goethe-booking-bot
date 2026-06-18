@@ -986,6 +986,8 @@ def api_form_scan():
 
     student = dict(students[0])
     name = student.get("name", "?")
+    if data.get("email"):
+        student["email"] = data["email"]
     if data.get("password"):
         student["password"] = data["password"]
 
