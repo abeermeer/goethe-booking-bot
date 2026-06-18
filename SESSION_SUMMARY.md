@@ -268,4 +268,20 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 - Added new env vars: `POLL_INTERVAL`, `POLL_JITTER`, `CB_BLOCK_*`, `CB_TIMEOUT_*`, `CB_GENERIC_*`
 - Updated badge count (23 modules)
 
+### Fixes & Deployments
+| Commit | Message | 
+|--------|---------|
+| `f435e70` | fix: increase Railway healthcheckTimeout to 600s |
+| `288a734` | fix: remove circuit breaker old properties from /api/health (smoke test fix) |
+
+| Platform | Status | URL |
+|----------|--------|-----|
+| GitHub | ✅ Pushed | `288a734` |
+| Netlify | ✅ Deployed | [goethe-booking-dashboard.netlify.app](https://goethe-booking-dashboard.netlify.app) |
+| Railway | ✅ Deployed | [goethe-booking-bot-production-092f.up.railway.app](https://goethe-booking-bot-production-092f.up.railway.app) |
+
+### Smoke Test Fix
+- **Root cause:** `circuit_breaker.py` refactor removed `threshold` and `cooldown` properties. `/api/health` was still calling `cb.threshold` and `cb.cooldown`.
+- **Fix:** Removed those two fields from the health endpoint response.
+
 
