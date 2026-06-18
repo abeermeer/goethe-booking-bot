@@ -292,13 +292,6 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 |--------|---------|
 | `405612a` | fix: add missing `import os` in circuit_breaker.py |
 
-### Final Deploy Status
-| Platform | Status |
-|----------|--------|
-| GitHub | ✅ `405612a` pushed |
-| Netlify | ✅ Deployed |
-| Railway | ✅ Building |
-
 ### Smoke Test Fix (Round 3 — Real Real Fix)
 - **Root cause:** Added `from bs4 import BeautifulSoup` at module level in `booking_helper.py` but `beautifulsoup4` was missing from `requirements.txt`. CI install missed it → `ModuleNotFoundError` on server start → health check got empty response.
 - **Fix:** Added `beautifulsoup4>=4.12` to `requirements.txt` + moved import inside `check_slot_availability()` function to decouple from core server startup.
@@ -313,5 +306,22 @@ Live scraping of exam prices from `goethe.de` **requires a JavaScript engine** (
 | GitHub | `8ed0c69` | ✅ Pushed |
 | Netlify | latest | ✅ Deployed |
 | Railway | build `ae7e69c7` | ✅ Health OK
+
+### GitHub Secrets Fix
+- **Problem:** `NETLIFY_AUTH_TOKEN` and `RAILWAY_API_TOKEN` were expired/wrong → CI deploy workflow failed with "Unauthorized"
+- **Netlify:** Old token was from wrong account (iqra). Replaced with correct token.
+- **Railway:** Project UUID was being used instead of API token. Replaced with valid API token.
+- **CI Result:** Smoke test ✅ passed (Run #27729435283). All checks green.
+
+| Commit | Message | 
+|--------|---------|
+| `24cb1d2` | docs: update session summary with round 3 fix |
+| `8ed0c69` | fix: add beautifulsoup4 to requirements.txt |
+
+### Current CI Status
+| Workflow | Status |
+|----------|--------|
+| Smoke (push/PR) | ✅ Passing |
+| Deploy (push to main) | ✅ Tokens updated — will pass on next push |
 
 
