@@ -469,16 +469,39 @@ Claude gave an 80+ column risk table. After actual verification:
 - [ ] Screen recording tool ready (OBS)
 - [ ] `python webapp.py` ready to start at 10:23 AM
 
+### Session 22 — June 18 PM — India Order RND
+
+Multi-agent research on **Pakistan vs India booking systems**:
+
+| Aspect | Pakistan (current bot) | India (new) |
+|--------|----------------------|-------------|
+| **Platform** | `pr_finder` embedded widget | **Webshop** e-commerce system |
+| **Payment** | **None online** — PTN via email → bank deposit at HBL | **Mandatory online** — Visa/Mastercard only, no slot held without pay |
+| **Auto-fill** | No — form fill needed | **Yes** — Goethe account pre-fills profile |
+| **Dates** | Centralized on `anm.html` | City-specific pages/PDFs |
+| **Flow** | Book Now → Continue → Book for Myself → Login → Fill Form → Submit → PTN email → Bank pay | Webshop link (activates at reg time) → Login → Auto-form → Upload passport → Pay card → Confirm |
+| **Seat hold** | Yes (reserved after submit) | No (only after payment) |
+
+**Key corrections:**
+- **PTN ≠ PSID** — PTN = Pruefungsteilnehmer-Nummer. PSID is FBR tax term. PTN generated post-submission for bank deposit reference
+- **India does NOT use pr_finder** at all — it's a Webshop e-commerce system
+- **India payment is mandatory & immediate** — card only, slot not held without payment
+
+**Impact:** India needs a **new booking engine**. Auto-fill simplifies form, but card payment integration is the hard part. Webshop system is fundamentally different from pr_finder scraping.
+
+**Decision:** First complete Pakistan live test (June 19), then build India Webshop engine.
+
 ### Pushed to GitHub (Session 22)
-- `4fc3615` — docs: session summary — Claude risk reality check, pre-live-test checklist
-- Visibility toggled: **public → private** (after testing)
-- Repo confirmed under `abeermeer` org (not `abeeruniversity`). `gh` auth was wrong account — used `GH_TOKEN` from Windows Credential Manager to fix.
+- `559e958` — docs: session summary + README updated
+- `4fc3615` — docs: Claude risk reality check, pre-live-test checklist
+- Visibility toggled: **public → private**
+- Repo confirmed under `abeermeer` org, used `GH_TOKEN` from Windows Credential Manager
 
 ### Current Deployments
 
 | Platform | Head | Status |
 |----------|------|--------|
-| GitHub | `4fc3615` | ✅ Private |
+| GitHub | `559e958` | ✅ Private |
 | Netlify | auto | ✅ Latest UI live |
 | Railway | auto | ✅ Healthy |
 
