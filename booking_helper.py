@@ -1530,6 +1530,8 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
     logger.info("=" * 60)
     logger.info("STARTING STUDENT: %s | %s | %s | %s", name, email, level, city)
     logger.info("=" * 60)
+    sk = f"{name}|{level}|{city}"
+    db.add_log(sk, level, f"Starting booking — {level} {city}")
 
     exam_url = get_exam_url(level)
     exam_dt = parse_exam_time_str(booking_time_str) if booking_time_str else dt.datetime.now()
@@ -1610,6 +1612,8 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                     if bookable_text:
                         txt = bookable_text.text.replace("\n", " ").strip()
                         logger.info("Booking not open yet: %s", txt)
+                        if not burst:
+                            db.add_log(sk, level, f"⏳ No slot — {txt}")
 
                     now = dt.datetime.now()
                     if burst and now < exam_dt:
@@ -1626,6 +1630,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                     continue
 
                 logger.info("★ STEP 1 DONE: 'Select modules' found! Clicking...")
+                db.add_log(sk, level, f"★ Slot found! Clicking 'Select modules' — {level} {city}")
                 notify(f"Slot found for {name}", f"Exam: {level} | City: {city}", logger)
                 human_move_and_click(driver, target_button)
                 enforce_single_tab(driver)
@@ -1663,6 +1668,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
 
         if _is_wicket_page(driver):
             logger.info("High-traffic wicket page detected — refreshing until passed")
+            db.add_log(sk, level, "⚠️ High-traffic wicket page — refreshing")
             for _ in range(30):
                 if stop_event.is_set():
                     result["status"] = "stopped"; return result
@@ -1671,6 +1677,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 wait_for_document_ready(driver, timeout=15)
                 if not _is_wicket_page(driver):
                     logger.info("Wicket page cleared")
+                    db.add_log(sk, level, "✅ Wicket page cleared")
                     break
 
         if not _handle_cas_login_if_needed(driver, student, logger):
@@ -1681,9 +1688,12 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if resume_step >= 2:
             logger.info("⏩ Skipping Wizard Step 1 (Name & Birth)")
         else:
+            db.add_log(sk, level, " Wizard Step 1: Personal Data (Name & Birth)")
             if not _fill_step_personal_data_1(driver, student, logger):
+                db.add_log(sk, level, "❌ Step 1 (Name & Birth) failed")
                 driver.save_screenshot(f"debug_step1_{name}.png")
                 raise RuntimeError("Step 1 (Name & Birth) failed")
+            db.add_log(sk, level, "✅ Step 1 done — Name & Birth")
             db.save_checkpoint(student_key, 2)
 
         random_human_delay(0.3, 0.8)
@@ -1694,9 +1704,12 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if resume_step >= 3:
             logger.info("⏩ Skipping Wizard Step 2 (Address & Motivation)")
         else:
+            db.add_log(sk, level, " Wizard Step 2: Address & Motivation")
             if not _fill_step_personal_data_2(driver, student, logger):
+                db.add_log(sk, level, "❌ Step 2 (Address & Motivation) failed")
                 driver.save_screenshot(f"debug_step2_{name}.png")
                 raise RuntimeError("Step 2 (Address & Motivation) failed")
+            db.add_log(sk, level, "✅ Step 2 done — Address & Motivation")
             db.save_checkpoint(student_key, 3)
 
         random_human_delay(0.3, 0.8)
@@ -1707,9 +1720,12 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if resume_step >= 4:
             logger.info("⏩ Skipping Wizard Step 3 (Payment)")
         else:
+            db.add_log(sk, level, " Wizard Step 3: Payment Method")
             if not _fill_step_payment(driver, student, logger):
+                db.add_log(sk, level, "❌ Step 3 (Payment) failed")
                 driver.save_screenshot(f"debug_step3_{name}.png")
                 raise RuntimeError("Step 3 (Payment) failed")
+            db.add_log(sk, level, "✅ Step 3 done — Payment method selected")
             db.save_checkpoint(student_key, 4)
 
         random_human_delay(0.3, 0.8)
@@ -1720,9 +1736,12 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if resume_step >= 5:
             logger.info("⏩ Skipping Wizard Step 4 (Promo)")
         else:
+            db.add_log(sk, level, " Wizard Step 4: Promotional Code")
             if not _fill_step_promo(driver, student, logger):
+                db.add_log(sk, level, "❌ Step 4 (Promo) failed")
                 driver.save_screenshot(f"debug_step4_{name}.png")
                 raise RuntimeError("Step 4 (Promo) failed")
+            db.add_log(sk, level, "✅ Step 4 done — Promo code")
             db.save_checkpoint(student_key, 5)
 
         random_human_delay(0.3, 0.8)
@@ -1733,9 +1752,12 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         if resume_step >= 6:
             logger.info("⏩ Skipping Wizard Step 5 (Review & Confirm)")
         else:
+            db.add_log(sk, level, " Wizard Step 5: Review & Confirm")
             if not _fill_step_review(driver, student, logger):
+                db.add_log(sk, level, "❌ Step 5 (Review & Confirm) failed")
                 driver.save_screenshot(f"debug_step5_{name}.png")
                 raise RuntimeError("Step 5 (Review & Confirm) failed")
+            db.add_log(sk, level, "✅ Step 5 done — Booking submitted!")
             db.save_checkpoint(student_key, 6)
 
         random_human_delay(0.3, 0.8)
@@ -1746,6 +1768,11 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         conf = capture_confirmation(driver, name, logger)
         result.update(conf)
         result["status"] = conf.get("status", "submitted")
+        ref = result.get("reference", "")
+        if ref:
+            db.add_log(sk, level, f"✅✅ BOOKING CONFIRMED — Ref: {ref}")
+        else:
+            db.add_log(sk, level, f"✅ Flow complete — status: {result['status']}")
         db.clear_checkpoint(student_key)
 
         if assigned_proxy:
@@ -1756,12 +1783,15 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
     except KeyboardInterrupt:
         logger.info("Interrupted by user.")
         result["status"] = "interrupted"
+        db.add_log(sk, level, "⏹️ Interrupted by user")
     except Exception as exc:
         CIRCUIT_BREAKER.record_failure(_classify_error(exc))
+        msg = str(exc)[:200]
         logger.exception("Flow error for %s: %s", name, exc)
+        db.add_log(sk, level, f"❌ Failed: {msg}")
         if assigned_proxy:
             PROXY_ROTATOR.mark_failed(assigned_proxy)
-        notify(f"❌ Booking failed: {name}", str(exc), logger)
+        notify(f"❌ Booking failed: {name}", msg, logger)
         if driver:
             try:
                 driver.save_screenshot(f"error_{name}.png")
