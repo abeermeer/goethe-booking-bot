@@ -1,4 +1,4 @@
-selenium>=4.10
+selenium>=4.45.0
 undetected-chromedriver>=3.5.0
 webdriver-manager>=4.0.0
 plyer>=2.1.0
