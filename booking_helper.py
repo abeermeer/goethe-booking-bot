@@ -1261,6 +1261,249 @@ def get_exam_url(level: str) -> str:
     return EXAM_URLS.get(level, EXAM_URLS["A1"])
 
 
+def _is_wicket_page(driver: webdriver.Chrome) -> bool:
+    url = driver.current_url.lower()
+    if "wicket" in url or "coesession" in url or "coe/options" in url:
+        body = driver.find_element(By.TAG_NAME, "body").text.lower()
+        if "high traffic" in body or "session" in body or "timeout" in body or "expired" in body:
+            return True
+    return False
+
+
+def _handle_cas_login_if_needed(driver: webdriver.Chrome, student: Dict[str, str],
+                                 logger: logging.Logger) -> bool:
+    url = driver.current_url.lower()
+    if "login.goethe.de" not in url and "cas/login" not in url:
+        return True
+    logger.info("CAS login page detected — attempting login")
+    email = student.get("email", "")
+    password = student.get("password", "")
+    if not email or not password:
+        logger.warning("No credentials for CAS login — aborting")
+        return False
+    return login_to_goethe(driver, email, password, logger)
+
+
+def _click_continue_wizard(driver: webdriver.Chrome, logger: logging.Logger, timeout: int = 30) -> bool:
+    try:
+        btn = find_element_fallback(driver, "continue_button", timeout=timeout, logger=logger)
+        if btn is None:
+            btns = driver.find_elements(By.CSS_SELECTOR, "button.btn-primary, button.primary, button[type='submit']")
+            for b in btns:
+                if b.is_displayed() and b.is_enabled():
+                    btn = b
+                    break
+        if btn is None:
+            btns = driver.find_elements(By.TAG_NAME, "button")
+            for b in btns:
+                txt = normalize_text(b.text)
+                if any(x in txt for x in ["continue", "weiter", "next", "submit", "save", "speichern"]):
+                    if b.is_displayed() and b.is_enabled():
+                        btn = b
+                        break
+        if btn is None:
+            logger.warning("No Continue button found")
+            return False
+        logger.info("Clicking Continue button in wizard")
+        human_move_and_click(driver, btn)
+        wait_for_document_ready(driver, timeout=timeout)
+        random_human_delay(0.3, 0.8)
+        return True
+    except Exception as exc:
+        logger.warning("_click_continue_wizard error: %s", exc)
+        return False
+
+
+def _fill_text_input(driver: webdriver.Chrome, selectors: List[str], value: str,
+                     logger: logging.Logger, timeout: int = 5) -> bool:
+    if not value:
+        return False
+    for sel in selectors:
+        try:
+            el = find_element_fallback(driver, sel, timeout=timeout, logger=logger)
+            if el and el.is_displayed():
+                simulate_human_typing(el, value)
+                return True
+        except (NoSuchElementException, TimeoutException):
+            continue
+    return False
+
+
+def _fill_select_by_visible(driver: webdriver.Chrome, selectors: List[str], value: str,
+                             logger: logging.Logger, timeout: int = 5) -> bool:
+    if not value:
+        return False
+    for sel in selectors:
+        try:
+            el = find_element_fallback(driver, sel, timeout=timeout, logger=logger)
+            if el and el.is_displayed() and el.tag_name.lower() == "select":
+                Select(el).select_by_visible_text(value)
+                return True
+        except (NoSuchElementException, TimeoutException):
+            continue
+    return False
+
+
+def _fill_step_personal_data_1(driver: webdriver.Chrome, student: Dict[str, str],
+                                logger: logging.Logger) -> bool:
+    logger.info("══ Wizard Step 1: Personal Data (Name & Birth) ══")
+    try:
+        wait_for_document_ready(driver, timeout=30)
+        random_human_delay(0.5, 1.5)
+
+        _fill_text_input(driver, ["first_name"], student.get("first_name", student.get("name", "").split()[0] if student.get("name") else ""), logger)
+        parts = student.get("name", "").split()
+        surname = student.get("surname", parts[-1] if len(parts) > 1 else "")
+        _fill_text_input(driver, ["surname"], surname, logger)
+
+        dob = student.get("dob", "")
+        if dob:
+            parts = dob.replace("-", "/").replace(".", "/").split("/")
+            if len(parts) == 3:
+                _fill_select_by_visible(driver, ["dob_day"], parts[0], logger)
+                _fill_select_by_visible(driver, ["dob_month"], parts[1], logger)
+                _fill_select_by_visible(driver, ["dob_year"], parts[2], logger)
+
+        email_val = student.get("email", "")
+        _fill_text_input(driver, ["email_field"], email_val, logger)
+
+        if not _click_continue_wizard(driver, logger):
+            driver.save_screenshot("debug_step1_no_continue.png")
+            return False
+        logger.info("★ Step 1 done")
+        return True
+    except Exception as exc:
+        logger.exception("Step 1 error: %s", exc)
+        return False
+
+
+def _fill_step_personal_data_2(driver: webdriver.Chrome, student: Dict[str, str],
+                                logger: logging.Logger) -> bool:
+    logger.info("══ Wizard Step 2: Personal Data (Address & Motivation) ══")
+    try:
+        wait_for_document_ready(driver, timeout=30)
+        random_human_delay(0.5, 1.5)
+
+        _fill_select_by_visible(driver, ["country_dropdown"], student.get("country", "Pakistan"), logger)
+        _fill_text_input(driver, ["postal_code"], student.get("postal_code", ""), logger)
+        _fill_text_input(driver, ["street_field"], student.get("street", ""), logger)
+        _fill_text_input(driver, ["house_number"], student.get("house_number", ""), logger)
+        _fill_text_input(driver, ["additional_address"], student.get("additional_address", ""), logger)
+        _fill_text_input(driver, ["location_city"], student.get("city", ""), logger)
+        _fill_select_by_visible(driver, ["phone_prefix"], student.get("phone_prefix", ""), logger)
+
+        phone = student.get("phone", "")
+        if phone:
+            _fill_text_input(driver, ["form_phone"], phone, logger)
+
+        _fill_text_input(driver, ["form_place_of_birth"], student.get("place_of_birth", ""), logger)
+        _fill_select_by_visible(driver, ["motivation_dropdown"], student.get("motivation", ""), logger)
+
+        if not _click_continue_wizard(driver, logger):
+            driver.save_screenshot("debug_step2_no_continue.png")
+            return False
+        logger.info("★ Step 2 done")
+        return True
+    except Exception as exc:
+        logger.exception("Step 2 error: %s", exc)
+        return False
+
+
+def _fill_step_payment(driver: webdriver.Chrome, student: Dict[str, str],
+                        logger: logging.Logger) -> bool:
+    logger.info("══ Wizard Step 3: Payment Method ══")
+    try:
+        wait_for_document_ready(driver, timeout=30)
+        random_human_delay(0.5, 1.5)
+
+        invoice_el = find_element_fallback(driver, "invoice_option", timeout=10, logger=logger)
+        if invoice_el and invoice_el.is_displayed():
+            logger.info("Selecting Invoice payment option")
+            human_move_and_click(driver, invoice_el)
+            random_human_delay(0.3, 0.8)
+        else:
+            logger.warning("Invoice option not found — trying generic radio/option")
+            radios = driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+            for r in radios:
+                parent = driver.execute_script("return arguments[0].parentElement.textContent", r)
+                if parent and "invoice" in parent.lower():
+                    if r.is_displayed() and r.is_enabled():
+                        human_move_and_click(driver, r)
+                        random_human_delay(0.3, 0.8)
+                        break
+
+        if not _click_continue_wizard(driver, logger):
+            driver.save_screenshot("debug_step3_no_continue.png")
+            return False
+        logger.info("★ Step 3 done")
+        return True
+    except Exception as exc:
+        logger.exception("Step 3 error: %s", exc)
+        return False
+
+
+def _fill_step_promo(driver: webdriver.Chrome, student: Dict[str, str],
+                      logger: logging.Logger) -> bool:
+    logger.info("══ Wizard Step 4: Promotional Code ══")
+    try:
+        wait_for_document_ready(driver, timeout=30)
+        random_human_delay(0.5, 1.5)
+
+        promo_val = student.get("promo_code", "")
+        if promo_val:
+            _fill_text_input(driver, ["promo_code"], promo_val, logger)
+            apply_btn = find_element_fallback(driver, "apply_promo", timeout=5, logger=logger)
+            if apply_btn and apply_btn.is_displayed():
+                human_move_and_click(driver, apply_btn)
+                random_human_delay(0.3, 0.8)
+
+        if not _click_continue_wizard(driver, logger):
+            driver.save_screenshot("debug_step4_no_continue.png")
+            return False
+        logger.info("★ Step 4 done")
+        return True
+    except Exception as exc:
+        logger.exception("Step 4 error: %s", exc)
+        return False
+
+
+def _fill_step_review(driver: webdriver.Chrome, student: Dict[str, str],
+                       logger: logging.Logger) -> bool:
+    logger.info("══ Wizard Step 5: Review & Confirm ══")
+    try:
+        wait_for_document_ready(driver, timeout=30)
+        random_human_delay(0.5, 1.5)
+
+        random_scroll(driver)
+        random_human_delay(0.3, 0.8)
+
+        confirm_btn = find_element_fallback(driver, "confirm_order", timeout=10, logger=logger)
+        if confirm_btn is None:
+            btns = driver.find_elements(By.TAG_NAME, "button")
+            for b in btns:
+                txt = normalize_text(b.text)
+                if any(x in txt for x in ["confirm", "order", "submit", "book", "buchen", "bestätigen", "absenden"]):
+                    if b.is_displayed() and b.is_enabled():
+                        confirm_btn = b
+                        break
+
+        if confirm_btn is None:
+            logger.warning("No confirm button found on review page")
+            driver.save_screenshot("debug_step5_no_confirm.png")
+            return False
+
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", confirm_btn)
+        random_human_delay(0.2, 0.5)
+        human_move_and_click(driver, confirm_btn)
+        wait_for_document_ready(driver, timeout=30)
+        random_human_delay(0.5, 1.0)
+        logger.info("★ Step 5 done — booking submitted!")
+        return True
+    except Exception as exc:
+        logger.exception("Step 5 error: %s", exc)
+        return False
+
+
 def run_student_flow(student: Dict[str, str], use_headless: bool, logger: logging.Logger,
                      stop_event: threading.Event = None, proxy: Optional[str] = None,
                      immediate: bool = False) -> Dict[str, str]:
@@ -1274,12 +1517,10 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
     if stop_event is None:
         stop_event = threading.Event()
 
-    # Scheduled mode: wait until booking time (skip if immediate)
     if not immediate:
         if not scheduled_wait(booking_time_str, logger, stop_event):
             return {"name": name, "email": email, "level": level, "city": city, "status": "stopped"}
 
-    # Pick a proxy for this student (rotation via ProxyRotator)
     assigned_proxy = proxy
     if not assigned_proxy:
         assigned_proxy = PROXY_ROTATOR.get()
@@ -1313,7 +1554,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
         page_loaded = False
         consecutive_errors = 0
 
-        logger.info("══ STEP 1: Waiting for 'Book Now' button ══")
+        logger.info("══ STEP 1: Waiting for 'Select modules' button ══")
         while True:
             if stop_event.is_set():
                 logger.warning("Stop requested by user. Aborting.")
@@ -1365,6 +1606,11 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                 target_button = pick_preferred_button(buttons, city)
 
                 if target_button is None:
+                    bookable_text = find_element_fallback(driver, "bookable_from_text", timeout=3)
+                    if bookable_text:
+                        txt = bookable_text.text.replace("\n", " ").strip()
+                        logger.info("Booking not open yet: %s", txt)
+
                     now = dt.datetime.now()
                     if burst and now < exam_dt:
                         gap = BURST_PRE_POLL
@@ -1372,7 +1618,6 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                         gap = random.uniform(BURST_POST_POLL_MIN, BURST_POST_POLL_MAX)
                     else:
                         gap = max(20, DEFAULT_POLL_INTERVAL + random.randint(-10, 15))
-                    # Sleep in small chunks so stop_event is responsive
                     for _ in range(int(gap)):
                         if stop_event.is_set():
                             result["status"] = "stopped"
@@ -1380,7 +1625,7 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
                         time.sleep(1)
                     continue
 
-                logger.info("★ STEP 1 DONE: 'Book Now' found! Clicking...")
+                logger.info("★ STEP 1 DONE: 'Select modules' found! Clicking...")
                 notify(f"Slot found for {name}", f"Exam: {level} | City: {city}", logger)
                 human_move_and_click(driver, target_button)
                 enforce_single_tab(driver)
@@ -1416,70 +1661,87 @@ def run_student_flow(student: Dict[str, str], use_headless: bool, logger: loggin
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
 
+        if _is_wicket_page(driver):
+            logger.info("High-traffic wicket page detected — refreshing until passed")
+            for _ in range(30):
+                if stop_event.is_set():
+                    result["status"] = "stopped"; return result
+                time.sleep(2)
+                driver.refresh()
+                wait_for_document_ready(driver, timeout=15)
+                if not _is_wicket_page(driver):
+                    logger.info("Wicket page cleared")
+                    break
+
+        if not _handle_cas_login_if_needed(driver, student, logger):
+            logger.warning("CAS login failed — proceeding anyway")
+
+        random_human_delay(0.3, 0.8)
+
         if resume_step >= 2:
-            logger.info("⏩ Skipping STEP 2 (already completed)")
+            logger.info("⏩ Skipping Wizard Step 1 (Name & Birth)")
         else:
-            logger.info("══ STEP 2: Clicking Continue ══")
-            click_continue_button(driver, logger)
-            enforce_single_tab(driver)
-            logger.info("★ STEP 2 DONE")
+            if not _fill_step_personal_data_1(driver, student, logger):
+                driver.save_screenshot(f"debug_step1_{name}.png")
+                raise RuntimeError("Step 1 (Name & Birth) failed")
             db.save_checkpoint(student_key, 2)
 
-        random_human_delay(0.5, 1.0)
+        random_human_delay(0.3, 0.8)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
 
         if resume_step >= 3:
-            logger.info("⏩ Skipping STEP 3 (already completed)")
+            logger.info("⏩ Skipping Wizard Step 2 (Address & Motivation)")
         else:
-            logger.info("══ STEP 3: Clicking Book for Myself ══")
-            click_book_for_myself(driver, logger)
-            enforce_single_tab(driver)
-            logger.info("★ STEP 3 DONE")
+            if not _fill_step_personal_data_2(driver, student, logger):
+                driver.save_screenshot(f"debug_step2_{name}.png")
+                raise RuntimeError("Step 2 (Address & Motivation) failed")
             db.save_checkpoint(student_key, 3)
 
-        random_human_delay(0.5, 1.0)
+        random_human_delay(0.3, 0.8)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
 
         if resume_step >= 4:
-            logger.info("⏩ Skipping STEP 4 (already completed)")
+            logger.info("⏩ Skipping Wizard Step 3 (Payment)")
         else:
-            if email and password:
-                logged_in = login_to_goethe(driver, email, password, logger)
-                if not logged_in:
-                    logger.warning("Login step failed or skipped. Attempting form fill anyway.")
-                    driver.save_screenshot(f"debug_login_{name}.png")
-            else:
-                logger.warning("No credentials provided — skipping login automation.")
-                driver.save_screenshot(f"debug_no_creds_{name}.png")
+            if not _fill_step_payment(driver, student, logger):
+                driver.save_screenshot(f"debug_step3_{name}.png")
+                raise RuntimeError("Step 3 (Payment) failed")
             db.save_checkpoint(student_key, 4)
 
-        random_human_delay(0.5, 1.0)
-        #random_scroll(driver)
+        random_human_delay(0.3, 0.8)
         if stop_event.is_set():
             logger.warning("Stop requested by user. Aborting.")
             result["status"] = "stopped"; return result
 
         if resume_step >= 5:
-            logger.info("⏩ Skipping STEP 5 (already completed)")
+            logger.info("⏩ Skipping Wizard Step 4 (Promo)")
         else:
-            # ── CAPTCHA check before form fill ──
-            captcha_found = detect_captcha(driver)
-            if captcha_found:
-                logger.info("CAPTCHA detected (%s), attempting to solve...", captcha_found)
-                solve_captcha(driver, logger)
-
-            form_ok = fill_registration_form(driver, student, logger)
-            if not form_ok:
-                logger.warning("Form fill had issues. Proceeding to capture state.")
-                driver.save_screenshot(f"debug_form_{name}.png")
+            if not _fill_step_promo(driver, student, logger):
+                driver.save_screenshot(f"debug_step4_{name}.png")
+                raise RuntimeError("Step 4 (Promo) failed")
             db.save_checkpoint(student_key, 5)
 
         random_human_delay(0.3, 0.8)
-        #random_mouse_wander(driver)
+        if stop_event.is_set():
+            logger.warning("Stop requested by user. Aborting.")
+            result["status"] = "stopped"; return result
+
+        if resume_step >= 6:
+            logger.info("⏩ Skipping Wizard Step 5 (Review & Confirm)")
+        else:
+            if not _fill_step_review(driver, student, logger):
+                driver.save_screenshot(f"debug_step5_{name}.png")
+                raise RuntimeError("Step 5 (Review & Confirm) failed")
+            db.save_checkpoint(student_key, 6)
+
+        random_human_delay(0.3, 0.8)
+        if stop_event.is_set():
+            logger.warning("Stop requested by user. Aborting.")
+            result["status"] = "stopped"; return result
 
         conf = capture_confirmation(driver, name, logger)
         result.update(conf)

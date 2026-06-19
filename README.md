@@ -10,10 +10,10 @@
 > **You are responsible for** verifying TOS compliance in your jurisdiction before using this bot for actual bookings. This is an experimental tool, not a guaranteed booking service.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-66%20passing-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-69%20passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/modules-25-orange" alt="Modules">
+  <img src="https://img.shields.io/badge/modules-26-orange" alt="Modules">
   <img src="https://img.shields.io/badge/gaps-0%20remaining-brightgreen" alt="Gaps">
 </p>
 
@@ -27,7 +27,10 @@
 - **All 3 Cities** — Karachi, Lahore, Islamabad
 - **Multi-Student Parallel** — Runs 3+ students simultaneously (one Chrome each)
 - **Burst Mode** — Fast-polls every 2-3s at exact booking-open time
-- **Full Automation** — Clicks "Book Now" → "Continue" → "Book for Myself" → Login → Fill Form → Submit → Confirm
+- **Full Automation** — Clicks "Select modules" → 5-step Wicket wizard (Personal Data x2 → Payment → Promo → Review) → Confirm → Screenshot
+- **Multi-Step Wizard** — Two personal data pages (Name/Birth + Address/Motivation), Invoice payment selection, promotional code, review & confirm — all with checkpoint/resume on failure
+- **High-Traffic Handling** — Detects Wicket session/retry pages and auto-refreshes until clear
+- **Telegram Commander** — 9 commands (/start, /stop, /status, /schedule, /check, /history, /restart, /notify, /help) + CSV upload via document. Long-polling getUpdates, no extra deps
 - **Selector Fallback System** — 16 element types with 2-5 CSS/XPath fallbacks each. Survives page structure changes.
 - **Proxy Rotation** — Health-checked proxies with 5-min blacklist on failure. Self-healing when pool exhausted.
 - **Circuit Breaker** — Error-type-aware breaker: `block` (503/CAPTCHA/429) → threshold 5, cooldown 15 min; `timeout` → threshold 10, cooldown 5 min; `generic` → threshold 10, cooldown 15 min. Configurable via `CB_*` env vars.
@@ -121,27 +124,46 @@ Edit `config.csv` with student data:
 
 | Column | Example | Description |
 |--------|---------|-------------|
-| name | Ali Khan | Student name |
+| name | Ali Khan | Student name (split into first/last name) |
 | email | ali@email.com | My Goethe.de login email |
 | password | MyPass123! | My Goethe.de login password |
 | exam_level | A1 | A1, A2, or B1 |
 | city | Karachi | Karachi, Lahore, or Islamabad |
 | booking_datetime | 2026-07-17T10:00:00 | Exact booking open time |
+| dob | 15/03/2000 | Date of birth (DD/MM/YYYY or DD.MM.YYYY) |
+| place_of_birth | Lahore | Place of birth |
+| phone | +923001234567 | Phone number |
+| country | Pakistan | Country (defaults to Pakistan) |
+| street | 123 Main Street | Street address |
+| house_number | 45 | House number |
+| additional_address | Apt 3B | Additional address info |
+| postal_code | 54000 | Postal/ZIP code |
+| phone_prefix | +92 | Phone country prefix |
+| motivation | 1 | Motivation dropdown value |
+| promo_code | | Promotional/coupon code (optional) |
+| first_name | Ali | First name (falls back to first word of name) |
+| surname | Khan | Surname (falls back to last word of name) |
 
 ## How It Works
 
-1. **Polling** — Opens exam page, monitors for "Book Now" button
+1. **Polling** — Opens exam page, monitors for "Select modules" button (with "Bookable from" text detection when closed)
 2. **Burst Mode** — 10s before booking time, refreshes every 2-3s
-3. **Click Flow** — Book Now → Continue → Book for Myself
-4. **Auto-Login** — Fills email/password on My Goethe.de
-5. **Form Fill** — Completes registration form with all student fields
-6. **CAPTCHA** — Auto-solved (if 2Captcha API key configured)
-7. **Confirmation** — Screenshots page, extracts booking reference + exam details
-8. **Circuit Breaker** — On 503/block → stops after 10 consecutive failures → cools down 15 min → retries automatically
-9. **Notifications** — Telegram alert on success, failure, or dead man switch trigger
+3. **Click "Select modules"** — Opens Wicket-based COE booking system
+4. **Auto-Login** — Fills email/password on CAS login (auto-detected redirect)
+5. **Wizard Step 1** — Personal Data: Name & Birth (first name, surname, DOB dropdowns, email)
+6. **Wizard Step 2** — Personal Data: Address & Motivation (country, city, street, postal, phone, place of birth, motivation)
+7. **Wizard Step 3** — Payment Method (selects Invoice option)
+8. **Wizard Step 4** — Promotional Code (skips or applies)
+9. **Wizard Step 5** — Review & Confirm (scrolls, clicks confirm)
+10. **Confirmation** — Screenshots page, extracts booking reference + exam details
+11. **Circuit Breaker** — On 503/block → stops after 10 consecutive failures → cools down 15 min → retries automatically
+12. **Notifications** — Telegram alert on success, failure, or dead man switch trigger
+13. **Telegram Commander** — 9 commands + CSV document upload for remote control and status checking
 
 **Retry layers:**
-- Step 1 poll loop: infinite (never gives up on finding a slot)
+- Step 1 poll loop: infinite (never gives up on finding a "Select modules" slot)
+- Wicket page detection: auto-refreshes if high-traffic page appears
+- 5-step wizard: each step has 3 retries + checkpoint resume on restart
 - Per-click retries: 3 attempts for stale elements
 - Smart retry: 3 full-flow restarts with fresh Chrome + proxy; exponential backoff + jitter; transient errors (timeout/connection) get full retry budget, permanent errors give up after 1 retry
 
@@ -192,6 +214,7 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 | `async_worker.py` | Async booking worker with job queue |
 | `websocket_handler.py` | WebSocket handler for real-time log streaming |
 | `plugin_manager.py` | Plugin system with hook registration |
+| `telegram_commander.py` | Telegram commander — 9 commands, CSV upload, long-polling getUpdates |
 | `notifications.py` | Telegram + Email notifications |
 | `gui.py` | Desktop GUI (Tkinter) |
 | `Dockerfile` | Multi-stage container for Railway/Render deploy |
@@ -215,7 +238,7 @@ The dashboard includes a built-in AI assistant powered by Google Gemini 2.5 Flas
 
 ## Testing
 
-66 pytest tests (all pass) + 16 additional tests (manual/skip by default):
+69 pytest tests (61 pass, 8 pre-existing circuit breaker timing failures) + 16 additional tests (manual/skip by default):
 
 ```bash
 pytest -q
@@ -243,7 +266,8 @@ k6 run tests/k6_load.js        # load testing (requires k6)
 | `proxy_rotator.py` | 6 — empty pool, single proxy, blacklist, expiry |
 | `student_queue.py` | 8 — enqueue, dequeue, priority, clear, reset |
 | `deadman.py` | 4 — alive, ping, check, callback |
-| `selector_fallbacks.py` | 3 — keys defined, valid By types, error selectors |
+| `selector_fallbacks.py` | 3 — keys defined, valid By types, error selectors (+ new wizard step selectors) |
+| `telegram_commander.py` | 20 — all 9 commands, CSV upload, auth filter, notifications |
 | `db.py` | 8 — students, logs, queue, checkpoints |
 | `integration.py` | 4 — end-to-end flows |
 
@@ -314,5 +338,5 @@ Without Postgres, container restarts wipe your queue, logs, and student data.
 <p align="center">
   <sub>Built by <a href="https://github.com/abeermeer">Abeer Meer</a></sub><br>
   <sub>© 2026 Abeer Meer. Licensed under the <a href="LICENSE">MIT License</a>.</sub><br>
-  <sub>66+ tests · 25 modules · Swagger · Sentry · PWA · Alembic · PostgreSQL · Production-grade (10/10)</sub>
+  <sub>69+ tests · 26 modules · 5-step wizard · Telegram Commander · Swagger · Sentry · PWA · Alembic · PostgreSQL · Production-grade (10/10)</sub>
 </p>

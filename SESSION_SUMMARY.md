@@ -566,4 +566,68 @@ Multi-agent research on **Pakistan vs India booking systems**:
 | Netlify | auto | ✅ Latest UI live |
 | Railway | auto | ✅ Healthy |
 
+---
+
+## Session 25 — June 19 — Multi-Step Wizard Rewrite (After Live Test Failure)
+
+### Root Cause of Failure (June 19)
+
+**Bot never found the booking button.** The old selector only matched `"book"` / `"buchen"` / `"weiter"` — but the actual button text on Goethe Pakistan's pr-finder is **"Select modules"**. The bot polled endlessly, found 0 buttons every cycle, and sent a false "no slots" notification at the end.
+
+### Button HTML Structure (Confirmed)
+
+When open (clickable):
+```html
+<button class="standard btnGruen icon-double-arrow-right">Select modules</button>
+```
+
+When closed (disabled):
+```html
+<button class="standard btnHellGrauV3" disabled="">Bookable from<br>DD.MM.YYYY</button>
+```
+
+Same structure for A1/A2/B1.
+
+### Post-Click Flow (Confirmed by Client)
+
+After clicking "Select modules" → opens Wicket-based COE booking system at `goethe.de/coe/options?...` with 5-step wizard:
+
+| Step | Page | Fields |
+|------|------|--------|
+| 1 | Personal Data (Name & Birth) | First name, surname, DOB (3 selects), email |
+| 2 | Personal Data (Address & Motivation) | Country, city, street, house, postal, phone, place of birth, motivation |
+| 3 | Payment Method | Select Invoice card |
+| 4 | Promotional Code | Skip or enter code |
+| 5 | Review & Confirm | Scroll, check, click confirm |
+
+Between clicking "Select modules" and the wizard, a **high-traffic wicket page** may appear (`goethe.de/coe/wicket/page;coesessionid=...?1`) — requires refresh retry.
+
+### Deadman False Alarm
+
+`scheduled_wait()` does NOT call `deadman.ping()`, so waiting ~48h until next window triggers alerts every ~5 min. Bot still works; alarms are cosmetic.
+
+### What Changed
+
+| File | Action |
+|------|--------|
+| `selector_fallbacks.py` | Fixed `book_button` — "select modules" first priority. Added `bookable_from_text`, `coe_wicket_page`, and all 5-step form field selectors (`first_name`, `surname`, `dob_day/month/year`, `email_field`, `country_dropdown`, `postal_code`, `location_city`, `street_field`, `house_number`, `additional_address`, `phone_prefix`, `motivation_dropdown`, `invoice_option`, `promo_code`, `apply_promo`, `confirm_order`) |
+| `booking_helper.py` | Added `_is_wicket_page()`, `_handle_cas_login_if_needed()`, `_click_continue_wizard()`, `_fill_text_input()`, `_fill_select_by_visible()`, `_fill_step_personal_data_1()`, `_fill_step_personal_data_2()`, `_fill_step_payment()`, `_fill_step_promo()`, `_fill_step_review()`. Rewrote `run_student_flow` with new 5-step wizard + wicket handling |
+
+### Next Booking Window
+
+A1/A2/B1 Karachi next registration open: date unknown (was June 19 this cycle). Two-week cycle → ~July 3.
+
+### Tests
+
+- 61 of 69 unit tests pass (8 pre-existing circuit breaker failures, unrelated)
+- All 20 Telegram commander, all booking, all DB, all confirmation parser tests pass
+- No tests yet for new wizard steps (need live page to mock)
+
+### Key Decisions
+
+- Selectors use **label-text matching** via `find_element_fallback` — Wicket generates dynamic `id` attributes, so CSS selectors by name/id are unreliable. Client must provide dev tool HTML from a live session for precision tuning.
+- Checkpoint mapping changed: old steps 1-4 (Continue, Book for Myself, Login, Form Fill) → new steps 1-6 (Select modules, Personal Data 1, Personal Data 2, Payment, Promo, Review). Old checkpoints from failed runs are irrelevant.
+- CAS login happens automatically if redirect detected — not a separate step.
+- VPS still needed for 24/7 operation (bot dies when laptop sleeps). Client to purchase later.
+
 
