@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir -p artifacts
           npx @axe-core/cli https://goethe-booking-dashboard.netlify.app --exit --save artifacts/a11y-report.json || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: a11y-report
